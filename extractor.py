@@ -141,6 +141,8 @@ class KnowledgeExtractor:
             ".post-content",
             ".entry-content",
             ".article-content",
+            ".content-area",  # Digital Photography School
+            ".single-content",
             ".content",
             "#content",
             ".post",
@@ -188,13 +190,61 @@ class KnowledgeExtractor:
 
         return any(indicator in src_lower for indicator in ad_indicators)
 
+    def _get_best_image_url(self, img: Tag) -> Optional[str]:
+        """
+        Get the best quality image URL from various attributes.
+        Handles lazy loading, srcset, and CDN patterns.
+        """
+        # Priority order for image sources
+        sources = [
+            img.get("src"),
+            img.get("data-src"),
+            img.get("data-lazy-src"),
+            img.get("data-original"),
+            img.get("data-full-url"),
+        ]
+
+        # Try srcset for highest resolution
+        srcset = img.get("srcset") or img.get("data-srcset")
+        if srcset:
+            # Parse srcset and get the largest image
+            # Format: "url1 100w, url2 200w, url3 300w"
+            best_url = None
+            best_width = 0
+            for item in srcset.split(","):
+                parts = item.strip().split()
+                if len(parts) >= 1:
+                    url = parts[0]
+                    width = 0
+                    if len(parts) >= 2 and parts[1].endswith("w"):
+                        try:
+                            width = int(parts[1][:-1])
+                        except ValueError:
+                            pass
+                    if width > best_width:
+                        best_width = width
+                        best_url = url
+            if best_url:
+                sources.insert(0, best_url)  # Prioritize srcset result
+
+        # Return first valid source
+        for src in sources:
+            if src and not src.startswith("data:"):  # Skip base64 placeholders
+                # Clean up WordPress CDN URLs if needed
+                if "i0.wp.com" in src or "i1.wp.com" in src or "i2.wp.com" in src:
+                    # These are valid CDN URLs, keep them
+                    pass
+                return src
+
+        return None
+
     def _extract_section_for_image(
         self, img: Tag, base_url: str, section_id: int, download_images: bool
     ) -> Optional[dict]:
         """Extract a content section centered around an image."""
 
-        # Get image URL
-        img_src = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
+        # Get image URL - try multiple sources
+        img_src = self._get_best_image_url(img)
         if not img_src:
             return None
 
