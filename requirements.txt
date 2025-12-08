@@ -1,5 +1,13 @@
+# Core dependencies
 flask==3.0.0
 requests==2.31.0
 beautifulsoup4==4.12.2
 gunicorn==21.2.0
 lxml==4.9.3
+
+# Optional: Browser automation for sites with bot protection
+# Uncomment to enable /extract-browser endpoint
+# playwright==1.40.0
+
+# To install Playwright browsers after pip install:
+# playwright install chromium

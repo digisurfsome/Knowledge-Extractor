@@ -27,16 +27,36 @@ os.makedirs(os.path.join(OUTPUT_DIR, "extractions"), exist_ok=True)
 @app.route("/", methods=["GET"])
 def home():
     """Health check and API info."""
+    # Check if Playwright is available
+    try:
+        from browser import check_playwright_installed
+        playwright_status = check_playwright_installed()
+    except Exception:
+        playwright_status = {"ready": False, "error": "Module not loaded"}
+
     return jsonify({
         "name": "Knowledge Extractor API",
-        "version": "1.0.0",
+        "version": "2.0.0",
+        "description": "Swiss Army knife for extracting educational content from web pages",
         "endpoints": {
-            "POST /extract": "Extract content from a single URL",
+            "POST /extract": "Extract content from a single URL (standard HTTP)",
+            "POST /extract-browser": "Extract using browser automation (bypasses bot protection)",
+            "POST /extract-html": "Extract from uploaded HTML content",
+            "POST /extract-batch": "Extract from multiple URLs at once",
             "POST /extract-course": "Extract entire course (follows relevant links)",
             "GET /extractions": "List all extractions",
             "GET /extractions/<id>": "Get specific extraction",
-            "GET /images/<filename>": "Get downloaded image"
+            "GET /extractions/<id>/download": "Download extraction as JSON",
+            "GET /images/<filename>": "Get downloaded image",
+            "GET /status/playwright": "Check if browser automation is available"
         },
+        "extraction_methods": {
+            "http": "Standard HTTP requests (fast, works for most sites)",
+            "browser": "Playwright browser automation (slower, bypasses Cloudflare/bot protection)",
+            "html": "Direct HTML input (for manually saved pages)",
+            "batch": "Process multiple URLs in one request"
+        },
+        "playwright_ready": playwright_status.get("ready", False),
         "status": "running"
     })
 
@@ -59,10 +79,11 @@ def extract_single():
 
     url = data["url"]
     include_images = data.get("include_images", True)
+    use_browser = data.get("use_browser", False)  # Optional: force browser mode
 
     try:
         extractor = KnowledgeExtractor(OUTPUT_DIR)
-        result = extractor.extract_page(url, download_images=include_images)
+        result = extractor.extract_page(url, download_images=include_images, use_browser=use_browser)
 
         # Save extraction
         extraction_id = _generate_extraction_id(url)
@@ -86,6 +107,249 @@ def extract_single():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/extract-browser", methods=["POST"])
+def extract_with_browser():
+    """
+    Extract content using Playwright browser automation.
+    Use this for sites with bot protection (Cloudflare, StudioBinder, etc.)
+
+    Request body:
+    {
+        "url": "https://studiobinder.com/blog/...",
+        "include_images": true  // optional, default true
+    }
+    """
+    data = request.get_json()
+
+    if not data or "url" not in data:
+        return jsonify({"error": "Missing 'url' in request body"}), 400
+
+    # Check if Playwright is available
+    try:
+        from browser import check_playwright_installed
+        status = check_playwright_installed()
+        if not status.get("ready"):
+            return jsonify({
+                "error": "Playwright not available",
+                "install_instructions": status.get("install_instructions"),
+                "details": status
+            }), 503
+    except ImportError:
+        return jsonify({
+            "error": "Browser module not available",
+            "install_instructions": "pip install playwright && playwright install chromium"
+        }), 503
+
+    url = data["url"]
+    include_images = data.get("include_images", True)
+
+    try:
+        extractor = KnowledgeExtractor(OUTPUT_DIR)
+        result = extractor.extract_with_browser(url, download_images=include_images)
+
+        # Save extraction
+        extraction_id = _generate_extraction_id(url + "_browser")
+        output_path = os.path.join(OUTPUT_DIR, "extractions", f"{extraction_id}.json")
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+
+        return jsonify({
+            "success": True,
+            "extraction_id": extraction_id,
+            "extraction_method": "browser",
+            "summary": {
+                "page_title": result.get("page_title", "Unknown"),
+                "sections_extracted": len(result.get("sections", [])),
+                "images_downloaded": sum(1 for s in result.get("sections", []) if s.get("image"))
+            },
+            "data": result
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/extract-html", methods=["POST"])
+def extract_from_html():
+    """
+    Extract content from raw HTML.
+    Use this for manually saved pages or HTML from other sources.
+
+    Request body:
+    {
+        "html": "<html>...</html>",
+        "base_url": "https://original-site.com/page",  // for resolving image URLs
+        "source_name": "studiobinder_lighting",  // optional identifier
+        "include_images": true  // optional, default true
+    }
+    """
+    data = request.get_json()
+
+    if not data or "html" not in data:
+        return jsonify({"error": "Missing 'html' in request body"}), 400
+
+    html_content = data["html"]
+    base_url = data.get("base_url", "")
+    source_name = data.get("source_name", "uploaded_html")
+    include_images = data.get("include_images", True)
+
+    try:
+        extractor = KnowledgeExtractor(OUTPUT_DIR)
+        result = extractor.extract_from_html(
+            html_content,
+            base_url=base_url,
+            download_images=include_images,
+            source_name=source_name
+        )
+
+        # Save extraction
+        extraction_id = _generate_extraction_id(source_name)
+        output_path = os.path.join(OUTPUT_DIR, "extractions", f"{extraction_id}.json")
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+
+        return jsonify({
+            "success": True,
+            "extraction_id": extraction_id,
+            "extraction_method": "html_upload",
+            "summary": {
+                "page_title": result.get("page_title", "Unknown"),
+                "sections_extracted": len(result.get("sections", [])),
+                "images_downloaded": sum(1 for s in result.get("sections", []) if s.get("image"))
+            },
+            "data": result
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/extract-batch", methods=["POST"])
+def extract_batch():
+    """
+    Extract content from multiple URLs in one request.
+
+    Request body:
+    {
+        "urls": [
+            "https://site1.com/page1",
+            "https://site2.com/page2"
+        ],
+        "use_browser": false,  // optional, use Playwright for all URLs
+        "include_images": true,  // optional, default true
+        "combine_results": true  // optional, merge all sections into one result
+    }
+    """
+    data = request.get_json()
+
+    if not data or "urls" not in data:
+        return jsonify({"error": "Missing 'urls' in request body"}), 400
+
+    urls = data["urls"]
+    if not isinstance(urls, list) or len(urls) == 0:
+        return jsonify({"error": "'urls' must be a non-empty list"}), 400
+
+    use_browser = data.get("use_browser", False)
+    include_images = data.get("include_images", True)
+    combine_results = data.get("combine_results", True)
+
+    # Limit batch size
+    max_batch = 20
+    if len(urls) > max_batch:
+        return jsonify({"error": f"Maximum {max_batch} URLs per batch"}), 400
+
+    try:
+        extractor = KnowledgeExtractor(OUTPUT_DIR)
+        all_results = []
+        all_sections = []
+        errors = []
+
+        for i, url in enumerate(urls):
+            print(f"[Batch {i+1}/{len(urls)}] Processing: {url}")
+            try:
+                result = extractor.extract_page(url, download_images=include_images, use_browser=use_browser)
+                all_results.append({
+                    "url": url,
+                    "success": True,
+                    "page_title": result.get("page_title"),
+                    "sections_count": len(result.get("sections", []))
+                })
+
+                # Add source info to each section
+                for section in result.get("sections", []):
+                    section["source_url"] = url
+                    section["source_title"] = result.get("page_title")
+                    all_sections.append(section)
+
+            except Exception as e:
+                print(f"  Error: {e}")
+                all_results.append({
+                    "url": url,
+                    "success": False,
+                    "error": str(e)
+                })
+                errors.append({"url": url, "error": str(e)})
+
+        # Build response
+        if combine_results:
+            combined = {
+                "extraction_type": "batch",
+                "extracted_date": datetime.now().isoformat(),
+                "urls_processed": len(urls),
+                "urls_successful": len([r for r in all_results if r.get("success")]),
+                "total_sections": len(all_sections),
+                "results_summary": all_results,
+                "sections": all_sections
+            }
+
+            # Save combined extraction
+            extraction_id = _generate_extraction_id("batch_" + str(len(urls)))
+            output_path = os.path.join(OUTPUT_DIR, "extractions", f"{extraction_id}.json")
+
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(combined, f, indent=2, ensure_ascii=False)
+
+            return jsonify({
+                "success": True,
+                "extraction_id": extraction_id,
+                "summary": {
+                    "urls_processed": len(urls),
+                    "urls_successful": len([r for r in all_results if r.get("success")]),
+                    "total_sections": len(all_sections),
+                    "total_images": sum(1 for s in all_sections if s.get("image"))
+                },
+                "errors": errors if errors else None,
+                "data": combined
+            })
+        else:
+            return jsonify({
+                "success": True,
+                "results": all_results,
+                "errors": errors if errors else None
+            })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/status/playwright", methods=["GET"])
+def playwright_status():
+    """Check if Playwright browser automation is available."""
+    try:
+        from browser import check_playwright_installed
+        status = check_playwright_installed()
+        return jsonify(status)
+    except ImportError:
+        return jsonify({
+            "playwright_package": False,
+            "browsers_installed": False,
+            "ready": False,
+            "install_instructions": "pip install playwright && playwright install chromium"
+        })
+
+
 @app.route("/extract-course", methods=["POST"])
 def extract_course():
     """
@@ -96,7 +360,8 @@ def extract_course():
         "url": "https://example.com/course-main-page",
         "course_description": "Photography lighting techniques course",  // helps AI determine relevance
         "max_pages": 20,  // optional, default 20
-        "include_images": true  // optional, default true
+        "include_images": true,  // optional, default true
+        "use_browser": false  // optional, use Playwright for bot-protected sites
     }
     """
     data = request.get_json()
@@ -108,6 +373,7 @@ def extract_course():
     course_description = data.get("course_description", "")
     max_pages = min(data.get("max_pages", 20), MAX_PAGES)
     include_images = data.get("include_images", True)
+    use_browser = data.get("use_browser", False)
 
     try:
         crawler = SmartCrawler(OUTPUT_DIR, max_pages=max_pages)
@@ -125,7 +391,7 @@ def extract_course():
         for i, page_url in enumerate(course_urls):
             print(f"[{i+1}/{len(course_urls)}] Extracting: {page_url}")
             try:
-                result = extractor.extract_page(page_url, download_images=include_images)
+                result = extractor.extract_page(page_url, download_images=include_images, use_browser=use_browser)
                 pages_processed.append({
                     "url": page_url,
                     "title": result.get("page_title", "Unknown"),

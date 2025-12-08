@@ -1,14 +1,18 @@
 # Knowledge Extractor
 
-A web API that extracts educational content from web pages while maintaining the relationship between images and their explanatory text. Turn any tutorial webpage into a structured knowledge base that AI can read and learn from.
+A **Swiss Army knife** web API for extracting educational content from web pages. Maintains the relationship between images and their explanatory text, turning any tutorial into a structured knowledge base that AI can learn from.
 
 ## Features
 
-- **Single Page Extraction**: Extract content from any URL
-- **Course Crawling**: Intelligently follow links to extract entire courses
-- **Image Downloading**: Downloads all images locally with proper naming
+- **Multiple Extraction Methods**:
+  - Standard HTTP requests (fast, works for most sites)
+  - Playwright browser automation (bypasses Cloudflare/bot protection)
+  - Direct HTML input (for manually saved pages)
+  - Batch processing (multiple URLs at once)
+- **Smart Course Crawling**: Intelligently follows relevant links to extract entire courses
+- **Image Downloading**: Downloads all images locally with descriptive naming
 - **Structured Output**: JSON format optimized for AI consumption
-- **Smart Text Association**: Links images to their headings, captions, and surrounding explanations
+- **Smart Text Association**: Links images to headings, captions, and surrounding explanations
 
 ## API Endpoints
 
@@ -16,16 +20,59 @@ A web API that extracts educational content from web pages while maintaining the
 ```
 GET /
 ```
-Returns API info and status.
+Returns API info, available endpoints, and Playwright status.
 
-### Extract Single Page
+### Extract Single Page (Standard HTTP)
 ```
 POST /extract
 Content-Type: application/json
 
 {
   "url": "https://example.com/tutorial-page",
+  "include_images": true,
+  "use_browser": false  // optional: force browser mode
+}
+```
+
+### Extract with Browser Automation (for blocked sites)
+```
+POST /extract-browser
+Content-Type: application/json
+
+{
+  "url": "https://studiobinder.com/blog/...",
   "include_images": true
+}
+```
+Use this for sites with bot protection (Cloudflare, StudioBinder, etc.)
+
+### Extract from Raw HTML
+```
+POST /extract-html
+Content-Type: application/json
+
+{
+  "html": "<html>...</html>",
+  "base_url": "https://original-site.com/page",
+  "source_name": "studiobinder_lighting",
+  "include_images": true
+}
+```
+Use this for manually saved pages or HTML from other sources.
+
+### Batch Extract (Multiple URLs)
+```
+POST /extract-batch
+Content-Type: application/json
+
+{
+  "urls": [
+    "https://site1.com/page1",
+    "https://site2.com/page2"
+  ],
+  "use_browser": false,
+  "include_images": true,
+  "combine_results": true
 }
 ```
 
@@ -38,7 +85,8 @@ Content-Type: application/json
   "url": "https://example.com/course-main-page",
   "course_description": "Photography lighting techniques",
   "max_pages": 20,
-  "include_images": true
+  "include_images": true,
+  "use_browser": false
 }
 ```
 
@@ -62,6 +110,11 @@ GET /extractions/<extraction_id>/download
 GET /images/<filename>
 ```
 
+### Check Playwright Status
+```
+GET /status/playwright
+```
+
 ## Output Format
 
 ```json
@@ -69,6 +122,7 @@ GET /images/<filename>
   "source_url": "https://example.com/tutorial",
   "page_title": "5 Common Key Light Patterns",
   "extracted_date": "2024-12-08T10:30:00",
+  "extraction_method": "http",
   "sections": [
     {
       "id": 1,
@@ -99,24 +153,27 @@ GET /images/<filename>
 
 ### Option 2: Railway CLI
 ```bash
-# Install Railway CLI
 npm install -g @railway/cli
-
-# Login
 railway login
-
-# Initialize and deploy
 railway init
 railway up
 ```
 
 ### Adding Persistent Storage
-To persist extractions across deployments:
-
 1. In Railway dashboard, go to your project
 2. Click "New" → "Volume"
 3. Set mount path to `/app/output`
 4. Redeploy your service
+
+### Enabling Browser Automation (Optional)
+To extract from sites with bot protection:
+
+1. SSH into your Railway service or modify the Dockerfile
+2. Install Playwright:
+```bash
+pip install playwright
+playwright install chromium
+```
 
 ## Environment Variables
 
@@ -136,10 +193,14 @@ cd knowledge-extractor
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install core dependencies
 pip install -r requirements.txt
+
+# (Optional) Install browser automation
+pip install playwright
+playwright install chromium
 
 # Run locally
 python app.py
@@ -149,42 +210,70 @@ The API will be available at `http://localhost:8080`
 
 ## Example Usage
 
-### Using curl
-
+### Standard Extraction
 ```bash
-# Extract a single page
 curl -X POST http://localhost:8080/extract \
   -H "Content-Type: application/json" \
   -d '{"url": "https://www.slrlounge.com/common-key-light-patterns/"}'
+```
 
-# Extract a course
-curl -X POST http://localhost:8080/extract-course \
+### Browser Extraction (for blocked sites)
+```bash
+curl -X POST http://localhost:8080/extract-browser \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.studiobinder.com/blog/three-point-lighting-setup/"}'
+```
+
+### Batch Extraction
+```bash
+curl -X POST http://localhost:8080/extract-batch \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://digital-photography-school.com/aperture/",
-    "course_description": "Photography aperture and depth of field tutorials",
-    "max_pages": 10
+    "urls": [
+      "https://nofilmschool.com/camera-angles",
+      "https://nofilmschool.com/3-point-lighting",
+      "https://nofilmschool.com/establishing-shot"
+    ],
+    "combine_results": true
   }'
 ```
 
-### Using Python
+### HTML Upload (for manually saved pages)
+```bash
+# Save a blocked page in your browser, then upload the HTML
+curl -X POST http://localhost:8080/extract-html \
+  -H "Content-Type: application/json" \
+  -d '{
+    "html": "<html>...your saved HTML...</html>",
+    "base_url": "https://studiobinder.com/blog/film-lighting/",
+    "source_name": "studiobinder_lighting"
+  }'
+```
 
+### Python Example
 ```python
 import requests
 
+API = "http://localhost:8080"
+
 # Extract single page
-response = requests.post(
-    "http://localhost:8080/extract",
-    json={"url": "https://www.slrlounge.com/common-key-light-patterns/"}
-)
-data = response.json()
-print(f"Extracted {len(data['data']['sections'])} sections")
+result = requests.post(f"{API}/extract", json={
+    "url": "https://www.slrlounge.com/common-key-light-patterns/"
+}).json()
 
-# Get the extraction for AI to use
-extraction_id = data["extraction_id"]
-knowledge = requests.get(f"http://localhost:8080/extractions/{extraction_id}").json()
+# Batch extract multiple pages
+result = requests.post(f"{API}/extract-batch", json={
+    "urls": [
+        "https://nofilmschool.com/camera-angles",
+        "https://nofilmschool.com/3-point-lighting"
+    ]
+}).json()
 
-# Now feed this to your AI
+# Get extraction for AI to study
+extraction_id = result["extraction_id"]
+knowledge = requests.get(f"{API}/extractions/{extraction_id}").json()
+
+# Feed to your AI
 for section in knowledge["sections"]:
     print(f"Term: {section['term']}")
     print(f"Definition: {section['definition']}")
@@ -192,24 +281,47 @@ for section in knowledge["sections"]:
         print(f"Image: {section['image']['local_file']}")
 ```
 
-## Use Case: AI Image Generation Training
+## Use Case: AI Image/Video Generation
 
-This tool is perfect for building "knowledge bases" that AI can study before generating content:
+Build "knowledge bases" that AI studies before generating content:
 
-1. **Extract** photography tutorials with image examples
-2. **Feed** the structured JSON to your AI before image generation
-3. **AI learns** proper terminology and visual indicators
-4. **Generate** images with accurate professional descriptions
+```
+1. EXTRACT: Photography/cinematography tutorials with visual examples
+2. STUDY: AI loads the JSON and views each image
+3. LEARN: AI connects terminology to visual appearance
+4. GENERATE: Images/videos with accurate professional descriptions
+```
 
-```python
-# Before generating images, have AI "study" the knowledge base
-knowledge = requests.get(f"{API_URL}/extractions/{extraction_id}").json()
+### Supported Sources
 
-# Feed each section (text + image) to multimodal AI
-for section in knowledge["sections"]:
-    # AI reads the definition
-    # AI views the reference image
-    # AI connects terminology to visual appearance
+| Source | Method | Content |
+|--------|--------|---------|
+| SLR Lounge | HTTP | Photography lighting patterns |
+| Digital Photography School | HTTP | Aperture, depth of field |
+| No Film School | HTTP | Camera shots, cinematography |
+| StudioBinder | Browser/HTML | Film techniques (requires Playwright or manual save) |
+
+## Handling Blocked Sites
+
+Some sites (StudioBinder, PhotoPills) have bot protection. Options:
+
+1. **Use `/extract-browser`** - Playwright browser automation (requires setup)
+2. **Manual save + `/extract-html`** - Save page in browser, upload HTML
+3. **Batch with `use_browser: true`** - Process multiple blocked URLs
+
+## Architecture
+
+```
+knowledge-extractor/
+├── app.py              # Flask API endpoints
+├── extractor.py        # Core extraction logic
+├── crawler.py          # Smart course crawling
+├── browser.py          # Playwright browser automation
+├── requirements.txt    # Dependencies
+├── Procfile            # Railway deployment
+└── output/             # Extracted content
+    ├── images/         # Downloaded images
+    └── extractions/    # JSON results
 ```
 
 ## License

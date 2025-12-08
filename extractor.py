@@ -34,24 +34,33 @@ class KnowledgeExtractor:
         self.images_dir = os.path.join(output_dir, "images")
         os.makedirs(self.images_dir, exist_ok=True)
 
-    def extract_page(self, url: str, download_images: bool = True) -> dict:
+    def extract_page(self, url: str, download_images: bool = True, use_browser: bool = False) -> dict:
         """
         Extract all content from a single page.
 
         Args:
             url: The URL to extract from
             download_images: Whether to download images locally
+            use_browser: Use Playwright browser automation (for blocked sites)
 
         Returns:
             Structured dict with all extracted content
         """
         print(f"Fetching: {url}")
 
-        # Fetch the page
-        response = requests.get(url, headers=self.HEADERS, timeout=30)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, "html.parser")
+        if use_browser:
+            # Use Playwright for sites with bot protection
+            from browser import BrowserFetcher
+            fetcher = BrowserFetcher()
+            html_content = fetcher.fetch_page(url)
+            if not html_content:
+                raise RuntimeError(f"Browser failed to fetch {url}")
+            soup = BeautifulSoup(html_content, "html.parser")
+        else:
+            # Standard HTTP request
+            response = requests.get(url, headers=self.HEADERS, timeout=30)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
 
         # Get page metadata
         page_title = self._get_page_title(soup)
@@ -63,8 +72,131 @@ class KnowledgeExtractor:
             "source_url": url,
             "page_title": page_title,
             "extracted_date": datetime.now().isoformat(),
+            "extraction_method": "browser" if use_browser else "http",
             "sections": sections
         }
+
+    def extract_from_html(
+        self, html_content: str, base_url: str = "", download_images: bool = True, source_name: str = "local"
+    ) -> dict:
+        """
+        Extract content from raw HTML string.
+
+        Args:
+            html_content: The HTML content to parse
+            base_url: Base URL for resolving relative image URLs
+            download_images: Whether to download images locally
+            source_name: Name to identify this extraction source
+
+        Returns:
+            Structured dict with all extracted content
+        """
+        print(f"Extracting from HTML ({len(html_content)} bytes)")
+
+        soup = BeautifulSoup(html_content, "html.parser")
+        page_title = self._get_page_title(soup)
+        sections = self._extract_sections(soup, base_url, download_images)
+
+        return {
+            "source_url": base_url or source_name,
+            "page_title": page_title,
+            "extracted_date": datetime.now().isoformat(),
+            "extraction_method": "html_string",
+            "sections": sections
+        }
+
+    def extract_from_file(self, file_path: str, base_url: str = "", download_images: bool = True) -> dict:
+        """
+        Extract content from a local HTML file.
+
+        Args:
+            file_path: Path to the HTML file
+            base_url: Base URL for resolving relative image URLs (if not provided, images may not download)
+            download_images: Whether to download images locally
+
+        Returns:
+            Structured dict with all extracted content
+        """
+        print(f"Extracting from file: {file_path}")
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        # Try to extract base URL from saved HTML if not provided
+        if not base_url:
+            soup_temp = BeautifulSoup(html_content, "html.parser")
+            base_tag = soup_temp.find("base", href=True)
+            if base_tag:
+                base_url = base_tag["href"]
+            # Also check for og:url
+            og_url = soup_temp.find("meta", property="og:url")
+            if og_url and og_url.get("content"):
+                base_url = og_url["content"]
+
+        result = self.extract_from_html(
+            html_content,
+            base_url=base_url,
+            download_images=download_images,
+            source_name=os.path.basename(file_path)
+        )
+        result["source_file"] = file_path
+        result["extraction_method"] = "local_file"
+
+        return result
+
+    def extract_from_directory(self, dir_path: str, base_url: str = "", download_images: bool = True) -> list[dict]:
+        """
+        Extract content from all HTML files in a directory.
+
+        Args:
+            dir_path: Path to directory containing HTML files
+            base_url: Base URL for resolving relative image URLs
+            download_images: Whether to download images locally
+
+        Returns:
+            List of extraction results, one per file
+        """
+        print(f"Extracting from directory: {dir_path}")
+
+        if not os.path.isdir(dir_path):
+            raise NotADirectoryError(f"Not a directory: {dir_path}")
+
+        results = []
+        html_files = [f for f in os.listdir(dir_path) if f.lower().endswith((".html", ".htm"))]
+
+        for i, filename in enumerate(html_files):
+            file_path = os.path.join(dir_path, filename)
+            print(f"[{i+1}/{len(html_files)}] Processing: {filename}")
+
+            try:
+                result = self.extract_from_file(file_path, base_url=base_url, download_images=download_images)
+                results.append(result)
+            except Exception as e:
+                print(f"  Error: {e}")
+                results.append({
+                    "source_file": file_path,
+                    "error": str(e),
+                    "sections": []
+                })
+
+        return results
+
+    def extract_with_browser(self, url: str, download_images: bool = True) -> dict:
+        """
+        Extract content using Playwright browser automation.
+        Use this for sites with bot protection (Cloudflare, etc.)
+
+        Args:
+            url: The URL to extract from
+            download_images: Whether to download images locally
+
+        Returns:
+            Structured dict with all extracted content
+        """
+        return self.extract_page(url, download_images=download_images, use_browser=True)
 
     def _get_page_title(self, soup: BeautifulSoup) -> str:
         """Extract the page title."""
