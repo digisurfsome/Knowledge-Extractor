@@ -142,6 +142,8 @@ class KnowledgeExtractor:
             ".entry-content",
             ".article-content",
             ".content-area",  # Digital Photography School
+            ".postpage-content",  # No Film School
+            ".body-description",  # No Film School alt
             ".single-content",
             ".content",
             "#content",
