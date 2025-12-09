@@ -8,6 +8,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PORT=8080
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -27,5 +28,5 @@ RUN mkdir -p /app/output/images /app/output/extractions
 # Expose port
 EXPOSE 8080
 
-# Run the application
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120"]
+# Use shell form so $PORT gets expanded
+CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
