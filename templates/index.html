@@ -298,7 +298,7 @@
                     <textarea id="batch-urls" placeholder="https://nofilmschool.com/camera-angles
 https://nofilmschool.com/3-point-lighting
 https://nofilmschool.com/establishing-shot" required></textarea>
-                    <p class="help-text">Maximum 20 URLs per batch</p>
+                    <p class="help-text">Maximum 50 URLs per batch. Large batches may take several minutes.</p>
                 </div>
                 <div class="form-group checkbox-group">
                     <input type="checkbox" id="batch-images" checked>
@@ -418,19 +418,75 @@ https://nofilmschool.com/establishing-shot" required></textarea>
 
         function showResults(elementId, data) {
             const sections = data.data?.sections || [];
-            let html = `
-                <div class="success">
-                    <strong>Success!</strong> Extracted ${sections.length} sections.
-                    <br>Extraction ID: ${data.extraction_id}
-                </div>
-            `;
+            const summary = data.summary || {};
+            const errors = data.errors || [];
+            const extractionId = data.extraction_id || 'unknown';
 
+            // Check if this is a batch result with per-URL info
+            const resultsSummary = data.data?.results_summary || [];
+
+            let html = '';
+
+            // Show summary
+            if (summary.urls_processed) {
+                // Batch result
+                html += `
+                    <div class="success">
+                        <strong>Batch Complete!</strong><br>
+                        URLs processed: ${summary.urls_processed}<br>
+                        URLs successful: ${summary.urls_successful || 0}<br>
+                        Total sections: ${summary.total_sections || 0}<br>
+                        Total images: ${summary.total_images || 0}<br>
+                        Extraction ID: ${extractionId}
+                    </div>
+                `;
+
+                // Show per-URL results
+                if (resultsSummary.length > 0) {
+                    html += '<div style="margin-top: 20px;"><h3 style="color: #00d4ff;">Per-URL Results:</h3>';
+                    resultsSummary.forEach((r, i) => {
+                        if (r.success) {
+                            html += `<div class="section-item" style="border-left: 3px solid #69db7c; padding-left: 15px;">
+                                <strong>${r.page_title || 'Unknown Title'}</strong><br>
+                                <span style="color: #888; font-size: 0.85rem;">${r.url}</span><br>
+                                <span style="color: #69db7c;">✓ ${r.sections_count || 0} sections extracted</span>
+                            </div>`;
+                        } else {
+                            html += `<div class="section-item" style="border-left: 3px solid #ff6b6b; padding-left: 15px;">
+                                <span style="color: #888; font-size: 0.85rem;">${r.url}</span><br>
+                                <span style="color: #ff6b6b;">✗ Failed: ${r.error || 'Unknown error'}</span>
+                            </div>`;
+                        }
+                    });
+                    html += '</div>';
+                }
+            } else {
+                // Single URL result
+                html += `
+                    <div class="success">
+                        <strong>Success!</strong> Extracted ${sections.length} sections.
+                        <br>Extraction ID: ${extractionId}
+                    </div>
+                `;
+            }
+
+            // Show errors if any
+            if (errors.length > 0) {
+                html += '<div class="error" style="margin-top: 15px;"><strong>Some URLs failed:</strong><ul style="margin-top: 10px;">';
+                errors.forEach(err => {
+                    html += `<li>${err.url}: ${err.error}</li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            // Show section previews
             if (sections.length > 0) {
-                html += '<div style="margin-top: 20px;">';
+                html += '<div style="margin-top: 20px;"><h3 style="color: #00d4ff;">Content Preview (first 10):</h3>';
                 sections.slice(0, 10).forEach((section, i) => {
                     html += `
                         <div class="section-item">
                             <h4>${section.heading || section.term || 'Section ' + (i+1)}</h4>
+                            ${section.source_title ? `<p style="color: #888; font-size: 0.85rem;">From: ${section.source_title}</p>` : ''}
                             <p><strong>Definition:</strong> ${section.definition || 'N/A'}</p>
                             ${section.visual_indicators ? `<p><strong>Visual Indicators:</strong> ${section.visual_indicators}</p>` : ''}
                             ${section.image?.local_file ? `<img src="/images/${section.image.local_file.replace('images/', '')}" alt="">` : ''}
@@ -443,11 +499,14 @@ https://nofilmschool.com/establishing-shot" required></textarea>
                 html += '</div>';
             }
 
-            html += `
-                <div style="margin-top: 20px;">
-                    <a href="/extractions/${data.extraction_id}/download" class="btn btn-small" download>Download JSON</a>
-                </div>
-            `;
+            // Download button
+            if (extractionId && extractionId !== 'unknown') {
+                html += `
+                    <div style="margin-top: 20px;">
+                        <a href="/extractions/${extractionId}/download" class="btn btn-small" download>Download JSON</a>
+                    </div>
+                `;
+            }
 
             document.getElementById(elementId).innerHTML = html;
         }

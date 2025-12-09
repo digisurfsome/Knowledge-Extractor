@@ -242,7 +242,7 @@ def extract_batch():
     combine_results = data.get("combine_results", True)
 
     # Limit batch size
-    max_batch = 20
+    max_batch = 50
     if len(urls) > max_batch:
         return jsonify({"error": f"Maximum {max_batch} URLs per batch"}), 400
 

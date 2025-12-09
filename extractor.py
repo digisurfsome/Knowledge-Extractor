@@ -404,8 +404,8 @@ class KnowledgeExtractor:
         local_file = None
         if download_images:
             local_file = self._download_image(img_url, section_id, term or heading or "image")
-            # Add delay to be polite to servers
-            time.sleep(0.5)
+            # Small delay to avoid hammering servers
+            time.sleep(0.1)
 
         return {
             "id": section_id,
