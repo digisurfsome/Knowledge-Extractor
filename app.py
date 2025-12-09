@@ -26,44 +26,8 @@ os.makedirs(os.path.join(OUTPUT_DIR, "extractions"), exist_ok=True)
 
 @app.route("/", methods=["GET"])
 def home():
-    """Dashboard or API info based on request type."""
-    # Check if request wants HTML (browser) or JSON (API)
-    if request.accept_mimetypes.best == 'text/html':
-        return render_template('index.html')
-
-    # Return JSON for API requests
-    try:
-        from browser import check_playwright_installed
-        playwright_status = check_playwright_installed()
-    except Exception:
-        playwright_status = {"ready": False, "error": "Module not loaded"}
-
-    return jsonify({
-        "name": "Knowledge Extractor API",
-        "version": "2.0.0",
-        "description": "Swiss Army knife for extracting educational content from web pages",
-        "endpoints": {
-            "POST /extract": "Extract content from a single URL (standard HTTP)",
-            "POST /extract-browser": "Extract using browser automation (bypasses bot protection)",
-            "POST /extract-html": "Extract from uploaded HTML content",
-            "POST /extract-batch": "Extract from multiple URLs at once",
-            "POST /extract-course": "Extract entire course (follows relevant links)",
-            "GET /extractions": "List all extractions",
-            "GET /extractions/<id>": "Get specific extraction",
-            "GET /extractions/<id>/download": "Download extraction as JSON",
-            "GET /images/<filename>": "Get downloaded image",
-            "GET /status/playwright": "Check if browser automation is available",
-            "GET /api": "Get this JSON API info"
-        },
-        "extraction_methods": {
-            "http": "Standard HTTP requests (fast, works for most sites)",
-            "browser": "Playwright browser automation (slower, bypasses Cloudflare/bot protection)",
-            "html": "Direct HTML input (for manually saved pages)",
-            "batch": "Process multiple URLs in one request"
-        },
-        "playwright_ready": playwright_status.get("ready", False),
-        "status": "running"
-    })
+    """Dashboard UI."""
+    return render_template('index.html')
 
 
 @app.route("/api", methods=["GET"])
