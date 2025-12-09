@@ -42,8 +42,8 @@ class URLChecker:
         "Accept-Language": "en-US,en;q=0.5",
     }
 
-    # Cache expiry (domains can change their blocking)
-    CACHE_EXPIRY_DAYS = 7
+    # Cache is permanent (no expiry) - user can manually re-check if needed
+    CACHE_EXPIRY_DAYS = None  # None = permanent
 
     def __init__(self, cache_dir: str):
         """Initialize with cache directory."""
@@ -84,13 +84,9 @@ class URLChecker:
         return hashlib.md5(domain.encode()).hexdigest()
 
     def _is_cache_valid(self, cache_entry: dict) -> bool:
-        """Check if cache entry is still valid."""
-        if "checked_date" not in cache_entry:
-            return False
-
-        checked = datetime.fromisoformat(cache_entry["checked_date"])
-        expiry = checked + timedelta(days=self.CACHE_EXPIRY_DAYS)
-        return datetime.now() < expiry
+        """Check if cache entry is still valid. Always valid since cache is permanent."""
+        # Cache is permanent - always valid if it exists
+        return "checked_date" in cache_entry
 
     def get_cached_status(self, url: str) -> Optional[dict]:
         """Get cached status for URL if available and valid."""
@@ -395,3 +391,51 @@ class URLChecker:
         """Clear the URL status cache."""
         self.cache = {}
         self._save_cache()
+
+    def get_history(self, status_filter: str = None, search: str = None) -> list:
+        """
+        Get URL check history with optional filtering.
+
+        Args:
+            status_filter: Filter by status ('green', 'yellow', 'red', or None for all)
+            search: Search term to filter domains
+
+        Returns:
+            List of cached URL statuses sorted by date (newest first)
+        """
+        results = []
+
+        for cache_key, entry in self.cache.items():
+            # Apply status filter
+            if status_filter and entry.get("status") != status_filter:
+                continue
+
+            # Apply search filter
+            if search:
+                search_lower = search.lower()
+                domain = entry.get("domain", "").lower()
+                if search_lower not in domain:
+                    continue
+
+            results.append({
+                "cache_key": cache_key,
+                "domain": entry.get("domain", "Unknown"),
+                "status": entry.get("status", "unknown"),
+                "reason": entry.get("reason", ""),
+                "suggestion": entry.get("suggestion", ""),
+                "checked_date": entry.get("checked_date", "")
+            })
+
+        # Sort by date (newest first)
+        results.sort(key=lambda x: x.get("checked_date", ""), reverse=True)
+
+        return results
+
+    def delete_from_cache(self, domain: str) -> bool:
+        """Delete a specific domain from cache."""
+        cache_key = hashlib.md5(domain.encode()).hexdigest()
+        if cache_key in self.cache:
+            del self.cache[cache_key]
+            self._save_cache()
+            return True
+        return False

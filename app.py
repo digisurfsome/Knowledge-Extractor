@@ -8,7 +8,9 @@ import os
 import json
 import hashlib
 from datetime import datetime
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file, render_template, Response
+import queue
+import threading
 from extractor import KnowledgeExtractor
 from crawler import SmartCrawler
 from url_checker import URLChecker
@@ -140,6 +142,125 @@ def clear_url_cache():
         return jsonify({"success": True, "message": "URL cache cleared"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/url-history", methods=["GET"])
+def url_history():
+    """
+    Get URL check history with optional filtering.
+
+    Query params:
+    - status: Filter by status ('green', 'yellow', 'red')
+    - search: Search term for domain names
+    """
+    status_filter = request.args.get("status")
+    search = request.args.get("search")
+
+    try:
+        checker = URLChecker(OUTPUT_DIR)
+        history = checker.get_history(status_filter=status_filter, search=search)
+        stats = checker.get_cache_stats()
+
+        return jsonify({
+            "success": True,
+            "stats": stats,
+            "history": history
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Global dict to store processing logs per extraction
+processing_logs = {}
+
+
+@app.route("/extract-batch-stream", methods=["POST"])
+def extract_batch_stream():
+    """
+    Extract content from multiple URLs with streaming progress updates.
+    Returns Server-Sent Events with real-time progress.
+    """
+    data = request.get_json()
+
+    if not data or "urls" not in data:
+        return jsonify({"error": "Missing 'urls' in request body"}), 400
+
+    urls = data["urls"]
+    if not isinstance(urls, list) or len(urls) == 0:
+        return jsonify({"error": "'urls' must be a non-empty list"}), 400
+
+    include_images = data.get("include_images", True)
+
+    # Limit batch size
+    max_batch = 50
+    if len(urls) > max_batch:
+        return jsonify({"error": f"Maximum {max_batch} URLs per batch"}), 400
+
+    # Generate extraction ID upfront
+    extraction_id = _generate_extraction_id("batch_" + str(len(urls)))
+
+    def generate():
+        extractor = KnowledgeExtractor(OUTPUT_DIR)
+        all_sections = []
+        all_results = []
+        errors = []
+
+        yield f"data: {json.dumps({'type': 'start', 'total': len(urls), 'extraction_id': extraction_id})}\n\n"
+
+        for i, url in enumerate(urls):
+            # Send progress update
+            yield f"data: {json.dumps({'type': 'progress', 'current': i+1, 'total': len(urls), 'url': url, 'status': 'processing'})}\n\n"
+
+            try:
+                result = extractor.extract_page(url, download_images=include_images)
+                sections_count = len(result.get("sections", []))
+
+                all_results.append({
+                    "url": url,
+                    "success": True,
+                    "page_title": result.get("page_title"),
+                    "sections_count": sections_count
+                })
+
+                # Add source info to each section
+                for section in result.get("sections", []):
+                    section["source_url"] = url
+                    section["source_title"] = result.get("page_title")
+                    all_sections.append(section)
+
+                yield f"data: {json.dumps({'type': 'progress', 'current': i+1, 'total': len(urls), 'url': url, 'status': 'success', 'sections': sections_count, 'title': result.get('page_title', 'Unknown')})}\n\n"
+
+            except Exception as e:
+                error_msg = str(e)[:200]
+                all_results.append({
+                    "url": url,
+                    "success": False,
+                    "error": error_msg
+                })
+                errors.append({"url": url, "error": error_msg})
+
+                yield f"data: {json.dumps({'type': 'progress', 'current': i+1, 'total': len(urls), 'url': url, 'status': 'error', 'error': error_msg})}\n\n"
+
+        # Build and save final result
+        combined = {
+            "extraction_type": "batch",
+            "extraction_id": extraction_id,
+            "extracted_date": datetime.now().isoformat(),
+            "urls_processed": len(urls),
+            "urls_successful": len([r for r in all_results if r.get("success")]),
+            "total_sections": len(all_sections),
+            "results_summary": all_results,
+            "sections": all_sections
+        }
+
+        output_path = os.path.join(OUTPUT_DIR, "extractions", f"{extraction_id}.json")
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(combined, f, indent=2, ensure_ascii=False)
+
+        # Send completion
+        yield f"data: {json.dumps({'type': 'complete', 'extraction_id': extraction_id, 'urls_processed': len(urls), 'urls_successful': len([r for r in all_results if r.get('success')]), 'total_sections': len(all_sections), 'total_images': sum(1 for s in all_sections if s.get('image')), 'errors': errors})}\n\n"
+
+    return Response(generate(), mimetype='text/event-stream')
 
 
 @app.route("/extract", methods=["POST"])

@@ -5,531 +5,342 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Knowledge Extractor</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             color: #fff;
-            padding: 20px;
+            padding: 15px;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 20px; }
         header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 2rem;
             background: linear-gradient(90deg, #00d4ff, #7b2cbf);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        header p {
-            color: #888;
-            font-size: 1.1rem;
-        }
+        header p { color: #888; font-size: 0.95rem; }
         .status-bar {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-bottom: 30px;
+            display: flex; gap: 15px; justify-content: center;
+            margin-bottom: 15px; flex-wrap: wrap;
         }
         .status-item {
             background: rgba(255,255,255,0.1);
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 0.9rem;
+            padding: 6px 14px; border-radius: 15px; font-size: 0.8rem;
         }
-        .status-item.ready {
-            background: rgba(0, 212, 255, 0.2);
-            color: #00d4ff;
-        }
+        .status-item.ready { background: rgba(0, 212, 255, 0.2); color: #00d4ff; }
         .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;
         }
         .tab {
-            padding: 12px 24px;
+            padding: 10px 18px;
             background: rgba(255,255,255,0.1);
-            border: none;
-            border-radius: 8px;
-            color: #fff;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s;
+            border: none; border-radius: 6px;
+            color: #fff; cursor: pointer; font-size: 0.9rem;
         }
-        .tab:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        .tab.active {
-            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
-        }
+        .tab:hover { background: rgba(255,255,255,0.2); }
+        .tab.active { background: linear-gradient(90deg, #00d4ff, #7b2cbf); }
         .panel {
             display: none;
             background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 30px;
+            border-radius: 10px; padding: 20px;
         }
-        .panel.active {
-            display: block;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #ccc;
-        }
-        input[type="text"], textarea {
-            width: 100%;
-            padding: 12px 16px;
+        .panel.active { display: block; }
+
+        /* Two-column layout */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .full-width { grid-column: 1 / -1; }
+        @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #ccc; font-size: 0.9rem; }
+        input[type="text"], textarea, select {
+            width: 100%; padding: 10px 12px;
             background: rgba(255,255,255,0.1);
             border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1rem;
+            border-radius: 6px; color: #fff; font-size: 0.9rem;
         }
-        input[type="text"]:focus, textarea:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
-        textarea {
-            min-height: 150px;
-            font-family: monospace;
-        }
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-        }
-        button[type="submit"], .btn {
-            padding: 14px 28px;
+        textarea { min-height: 120px; font-family: monospace; font-size: 0.85rem; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; }
+        input[type="checkbox"] { width: 18px; height: 18px; }
+
+        .btn {
+            padding: 10px 20px;
             background: linear-gradient(90deg, #00d4ff, #7b2cbf);
-            border: none;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            border: none; border-radius: 6px;
+            color: #fff; font-size: 0.9rem; cursor: pointer;
         }
-        button[type="submit"]:hover, .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+        .btn-green { background: linear-gradient(90deg, #37b24d, #69db7c); }
+        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+        /* Toggle Switch */
+        .toggle-container { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .toggle-label { font-size: 0.85rem; color: #ccc; }
+        .toggle {
+            position: relative; width: 50px; height: 26px;
+            background: rgba(255,255,255,0.1); border-radius: 13px; cursor: pointer;
         }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .toggle.active { background: rgba(105, 219, 124, 0.5); }
+        .toggle::after {
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 20px; height: 20px; background: #fff;
+            border-radius: 50%; transition: 0.2s;
         }
-        .results {
-            margin-top: 30px;
-        }
-        .result-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-        }
-        .result-card h3 {
-            color: #00d4ff;
-            margin-bottom: 10px;
-        }
-        .result-card .meta {
-            color: #888;
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-        }
-        .section-item {
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-        .section-item h4 {
-            color: #7b2cbf;
-            margin-bottom: 8px;
-        }
-        .section-item p {
-            color: #ccc;
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-        .section-item img {
-            max-width: 300px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-top-color: #00d4ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .error {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid rgba(255, 0, 0, 0.5);
-            padding: 15px;
-            border-radius: 8px;
-            color: #ff6b6b;
-        }
-        .success {
-            background: rgba(0, 255, 0, 0.1);
-            border: 1px solid rgba(0, 255, 0, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            color: #69db7c;
-        }
-        .extractions-list {
-            display: grid;
-            gap: 15px;
-        }
-        .extraction-item {
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .extraction-item .info h4 {
-            color: #00d4ff;
-            margin-bottom: 5px;
-        }
-        .extraction-item .info p {
-            color: #888;
-            font-size: 0.9rem;
-        }
-        .extraction-item .actions {
-            display: flex;
-            gap: 10px;
-        }
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-        }
-        pre {
-            background: rgba(0,0,0,0.3);
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .help-text {
-            color: #888;
-            font-size: 0.85rem;
-            margin-top: 5px;
-        }
+        .toggle.active::after { left: 27px; }
+
         /* Traffic Light Styles */
-        .traffic-light-container {
-            margin: 20px 0;
-        }
         .traffic-summary {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;
         }
         .traffic-count {
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            padding: 8px 14px; border-radius: 6px; font-weight: bold;
+            display: flex; align-items: center; gap: 6px; font-size: 0.85rem;
         }
-        .traffic-count.green {
-            background: rgba(105, 219, 124, 0.2);
-            color: #69db7c;
-            border: 1px solid rgba(105, 219, 124, 0.4);
-        }
-        .traffic-count.yellow {
-            background: rgba(255, 212, 59, 0.2);
-            color: #ffd43b;
-            border: 1px solid rgba(255, 212, 59, 0.4);
-        }
-        .traffic-count.red {
-            background: rgba(255, 107, 107, 0.2);
-            color: #ff6b6b;
-            border: 1px solid rgba(255, 107, 107, 0.4);
-        }
-        .traffic-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-        }
+        .traffic-count.green { background: rgba(105, 219, 124, 0.2); color: #69db7c; }
+        .traffic-count.yellow { background: rgba(255, 212, 59, 0.2); color: #ffd43b; }
+        .traffic-count.red { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+        .traffic-dot { width: 10px; height: 10px; border-radius: 50%; }
         .traffic-dot.green { background: #69db7c; }
         .traffic-dot.yellow { background: #ffd43b; }
         .traffic-dot.red { background: #ff6b6b; }
-        .url-group {
-            margin-bottom: 25px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
+
+        .url-group { margin-bottom: 15px; border-radius: 6px; overflow: hidden; }
         .url-group-header {
-            padding: 12px 15px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            padding: 10px 12px; font-weight: bold; font-size: 0.85rem;
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
         }
-        .url-group-header.green {
-            background: rgba(105, 219, 124, 0.15);
-            color: #69db7c;
-        }
-        .url-group-header.yellow {
-            background: rgba(255, 212, 59, 0.15);
-            color: #ffd43b;
-        }
-        .url-group-header.red {
-            background: rgba(255, 107, 107, 0.15);
-            color: #ff6b6b;
-        }
-        .url-group-content {
-            background: rgba(255,255,255,0.03);
-            padding: 15px;
-        }
+        .url-group-header.green { background: rgba(105, 219, 124, 0.15); color: #69db7c; }
+        .url-group-header.yellow { background: rgba(255, 212, 59, 0.15); color: #ffd43b; }
+        .url-group-header.red { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+        .url-group-content { background: rgba(255,255,255,0.03); padding: 10px; max-height: 200px; overflow-y: auto; }
+        .url-group-content.collapsed { display: none; }
+
         .url-item {
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            background: rgba(255,255,255,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 15px;
+            padding: 8px 10px; margin-bottom: 6px; border-radius: 4px;
+            background: rgba(255,255,255,0.05); font-size: 0.8rem;
         }
-        .url-item:last-child {
-            margin-bottom: 0;
+        .url-item .url-text { font-family: monospace; word-break: break-all; }
+        .url-item .url-meta { color: #888; font-size: 0.75rem; margin-top: 3px; }
+
+        /* Processing Log */
+        .processing-log {
+            background: rgba(0,0,0,0.3); border-radius: 6px;
+            padding: 10px; max-height: 250px; overflow-y: auto;
+            font-family: monospace; font-size: 0.8rem;
         }
-        .url-item .url-text {
-            font-family: monospace;
-            font-size: 0.85rem;
-            word-break: break-all;
-            flex: 1;
+        .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .log-entry:last-child { border-bottom: none; }
+        .log-entry.success { color: #69db7c; }
+        .log-entry.error { color: #ff6b6b; }
+        .log-entry.processing { color: #00d4ff; }
+        .log-entry .log-time { color: #666; margin-right: 8px; }
+
+        /* Results */
+        .results { margin-top: 15px; }
+        .success-box {
+            background: rgba(0, 255, 0, 0.1); border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 12px; border-radius: 6px; color: #69db7c; font-size: 0.9rem;
         }
-        .url-item .url-reason {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 4px;
+        .error-box {
+            background: rgba(255, 0, 0, 0.1); border: 1px solid rgba(255, 0, 0, 0.3);
+            padding: 12px; border-radius: 6px; color: #ff6b6b; font-size: 0.9rem;
         }
-        .url-item .url-suggestion {
-            font-size: 0.8rem;
-            margin-top: 4px;
-            font-style: italic;
+        .section-item {
+            background: rgba(255,255,255,0.05); border-radius: 6px;
+            padding: 12px; margin-bottom: 8px;
         }
-        .url-item.green .url-suggestion { color: #69db7c; }
-        .url-item.yellow .url-suggestion { color: #ffd43b; }
-        .url-item.red .url-suggestion { color: #ff6b6b; }
-        .cache-badge {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.1);
-            color: #888;
+        .section-item h4 { color: #7b2cbf; margin-bottom: 6px; font-size: 0.95rem; }
+        .section-item p { color: #ccc; font-size: 0.85rem; line-height: 1.4; }
+        .section-item img { max-width: 200px; border-radius: 6px; margin-top: 8px; }
+
+        /* History */
+        .history-filters {
+            display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;
         }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 15px;
+        .history-filters input { max-width: 250px; }
+        .history-filters select { max-width: 150px; }
+        .history-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; background: rgba(255,255,255,0.05);
+            border-radius: 6px; margin-bottom: 8px;
         }
-        .btn-secondary {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
+        .history-item .domain { font-family: monospace; font-size: 0.9rem; }
+        .history-item .date { color: #888; font-size: 0.75rem; }
+
+        .loading { text-align: center; padding: 30px; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #00d4ff; border-radius: 50%;
+            animation: spin 1s linear infinite; margin: 0 auto 15px;
         }
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        .btn-green {
-            background: linear-gradient(90deg, #37b24d, #69db7c);
-        }
-        .tooltip-icon {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            text-align: center;
-            line-height: 18px;
-            font-size: 12px;
-            cursor: help;
-            margin-left: 5px;
-        }
-        .processing-status {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .processing-status h4 {
-            color: #00d4ff;
-            margin-bottom: 10px;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .help-text { color: #888; font-size: 0.8rem; margin-top: 4px; }
+        .expand-btn { font-size: 0.8rem; margin-left: auto; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🧠 Knowledge Extractor</h1>
+            <h1>Knowledge Extractor</h1>
             <p>Extract educational content from web pages for AI training</p>
         </header>
 
         <div class="status-bar">
             <div class="status-item ready" id="api-status">API: Running</div>
             <div class="status-item" id="playwright-status">Playwright: Checking...</div>
+            <div class="status-item" id="cache-status">Cache: Loading...</div>
         </div>
 
         <div class="tabs">
-            <button class="tab active" onclick="showTab('single')">Single URL</button>
-            <button class="tab" onclick="showTab('batch')">Batch URLs</button>
+            <button class="tab active" onclick="showTab('batch')">Batch URLs</button>
+            <button class="tab" onclick="showTab('single')">Single URL</button>
             <button class="tab" onclick="showTab('browser')">Browser Mode</button>
             <button class="tab" onclick="showTab('html')">HTML Upload</button>
+            <button class="tab" onclick="showTab('history')">URL History</button>
             <button class="tab" onclick="showTab('extractions')">Past Extractions</button>
         </div>
 
-        <!-- Single URL Panel -->
-        <div class="panel active" id="panel-single">
-            <h2>Extract Single URL</h2>
-            <p style="color: #888; margin-bottom: 20px;">Extract content from a single webpage using standard HTTP requests.</p>
+        <!-- Batch URLs Panel (Default) -->
+        <div class="panel active" id="panel-batch">
+            <div class="two-col">
+                <div>
+                    <h3 style="margin-bottom: 15px; color: #00d4ff;">Batch Extract URLs</h3>
 
-            <form onsubmit="extractSingle(event)">
-                <div class="form-group">
-                    <label for="single-url">URL to Extract</label>
-                    <input type="text" id="single-url" placeholder="https://www.slrlounge.com/common-key-light-patterns/" required>
+                    <div class="toggle-container">
+                        <span class="toggle-label">Check Only</span>
+                        <div class="toggle" id="auto-extract-toggle" onclick="toggleAutoExtract()"></div>
+                        <span class="toggle-label">Auto-Extract Greens</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>URLs (one per line)</label>
+                        <textarea id="batch-urls" placeholder="https://example.com/page1
+https://example.com/page2" oninput="onUrlsChange()"></textarea>
+                        <p class="help-text">Max 50 URLs. Paste and click Check to see accessibility.</p>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="batch-images" checked>
+                        <label style="margin: 0;">Download images</label>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn" id="check-urls-btn" onclick="checkUrlsFirst()">Check URLs</button>
+                        <button class="btn btn-secondary" onclick="recheckUrls()">Re-check (ignore cache)</button>
+                    </div>
                 </div>
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="single-images" checked>
-                    <label for="single-images" style="margin: 0;">Download images</label>
+
+                <div>
+                    <h3 style="margin-bottom: 15px; color: #00d4ff;">Processing Log</h3>
+                    <div class="processing-log" id="processing-log">
+                        <div class="log-entry" style="color: #888;">Waiting for action...</div>
+                    </div>
                 </div>
-                <button type="submit" id="single-submit">Extract Content</button>
-            </form>
-
-            <div class="results" id="single-results"></div>
-        </div>
-
-        <!-- Batch URLs Panel -->
-        <div class="panel" id="panel-batch">
-            <h2>Batch Extract Multiple URLs</h2>
-            <p style="color: #888; margin-bottom: 20px;">Enter URLs to check accessibility first, then extract the green-lit ones.</p>
-
-            <div class="form-group">
-                <label for="batch-urls">URLs (one per line)</label>
-                <textarea id="batch-urls" placeholder="https://nofilmschool.com/camera-angles
-https://nofilmschool.com/3-point-lighting
-https://www.studiobinder.com/blog/camera-shots/
-https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></textarea>
-                <p class="help-text">Maximum 50 URLs. Paste your URLs and click "Check URLs First" to see which ones are accessible.</p>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <input type="checkbox" id="batch-images" checked>
-                <label for="batch-images" style="margin: 0;">Download images</label>
-            </div>
-
-            <div class="btn-group">
-                <button type="button" class="btn" id="check-urls-btn" onclick="checkUrlsFirst()">
-                    🚦 Check URLs First
-                </button>
-                <button type="button" class="btn btn-secondary" id="batch-submit" onclick="extractBatchDirect()" style="display: none;">
-                    Skip Check & Extract All
-                </button>
             </div>
 
             <!-- Traffic Light Results -->
-            <div id="traffic-results" style="margin-top: 25px;"></div>
+            <div id="traffic-results" style="margin-top: 20px;"></div>
 
             <!-- Extraction Results -->
             <div class="results" id="batch-results"></div>
         </div>
 
+        <!-- Single URL Panel -->
+        <div class="panel" id="panel-single">
+            <h3 style="margin-bottom: 15px;">Extract Single URL</h3>
+            <form onsubmit="extractSingle(event)">
+                <div class="form-group">
+                    <label>URL to Extract</label>
+                    <input type="text" id="single-url" placeholder="https://example.com/page" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="single-images" checked>
+                    <label style="margin: 0;">Download images</label>
+                </div>
+                <button type="submit" class="btn" id="single-submit">Extract Content</button>
+            </form>
+            <div class="results" id="single-results"></div>
+        </div>
+
         <!-- Browser Mode Panel -->
         <div class="panel" id="panel-browser">
-            <h2>Browser Mode (Playwright)</h2>
-            <p style="color: #888; margin-bottom: 20px;">Use a real browser to extract from sites with bot protection (Cloudflare, StudioBinder, etc.)</p>
-
+            <h3 style="margin-bottom: 15px;">Browser Mode (Playwright)</h3>
+            <p class="help-text" style="margin-bottom: 15px;">Use for sites with bot protection (Cloudflare, etc.)</p>
             <form onsubmit="extractBrowser(event)">
                 <div class="form-group">
-                    <label for="browser-url">URL to Extract</label>
-                    <input type="text" id="browser-url" placeholder="https://www.studiobinder.com/blog/three-point-lighting-setup/" required>
+                    <label>URL to Extract</label>
+                    <input type="text" id="browser-url" placeholder="https://studiobinder.com/blog/..." required>
                 </div>
                 <div class="form-group checkbox-group">
                     <input type="checkbox" id="browser-images" checked>
-                    <label for="browser-images" style="margin: 0;">Download images</label>
+                    <label style="margin: 0;">Download images</label>
                 </div>
-                <button type="submit" id="browser-submit">Extract with Browser</button>
+                <button type="submit" class="btn" id="browser-submit">Extract with Browser</button>
             </form>
-
             <div class="results" id="browser-results"></div>
         </div>
 
         <!-- HTML Upload Panel -->
         <div class="panel" id="panel-html">
-            <h2>Extract from HTML</h2>
-            <p style="color: #888; margin-bottom: 20px;">Paste HTML content from a manually saved webpage.</p>
-
+            <h3 style="margin-bottom: 15px;">Extract from HTML</h3>
+            <p class="help-text" style="margin-bottom: 15px;">For manually saved pages</p>
             <form onsubmit="extractHTML(event)">
                 <div class="form-group">
-                    <label for="html-content">HTML Content</label>
+                    <label>HTML Content</label>
                     <textarea id="html-content" placeholder="<html>...</html>" required></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="html-baseurl">Original URL (for image downloads)</label>
+                    <label>Original URL (for image downloads)</label>
                     <input type="text" id="html-baseurl" placeholder="https://original-site.com/page">
                 </div>
-                <div class="form-group">
-                    <label for="html-name">Source Name</label>
-                    <input type="text" id="html-name" placeholder="studiobinder_lighting">
-                </div>
-                <button type="submit" id="html-submit">Extract from HTML</button>
+                <button type="submit" class="btn" id="html-submit">Extract from HTML</button>
             </form>
-
             <div class="results" id="html-results"></div>
+        </div>
+
+        <!-- URL History Panel -->
+        <div class="panel" id="panel-history">
+            <h3 style="margin-bottom: 15px;">URL Check History</h3>
+            <div class="history-filters">
+                <input type="text" id="history-search" placeholder="Search domains..." oninput="loadHistory()">
+                <select id="history-filter" onchange="loadHistory()">
+                    <option value="">All Status</option>
+                    <option value="green">Green Only</option>
+                    <option value="yellow">Yellow Only</option>
+                    <option value="red">Red Only</option>
+                </select>
+                <button class="btn btn-small btn-secondary" onclick="loadHistory()">Refresh</button>
+            </div>
+            <div id="history-stats" style="margin-bottom: 15px;"></div>
+            <div id="history-list"></div>
         </div>
 
         <!-- Past Extractions Panel -->
         <div class="panel" id="panel-extractions">
-            <h2>Past Extractions</h2>
-            <p style="color: #888; margin-bottom: 20px;">View and download previous extractions.</p>
-
-            <button class="btn" onclick="loadExtractions()">Refresh List</button>
-
-            <div class="extractions-list" id="extractions-list" style="margin-top: 20px;"></div>
+            <h3 style="margin-bottom: 15px;">Past Extractions</h3>
+            <button class="btn btn-small" onclick="loadExtractions()">Refresh</button>
+            <div class="extractions-list" id="extractions-list" style="margin-top: 15px;"></div>
         </div>
     </div>
 
     <script>
-        // Check status on load
+        // State
+        let autoExtract = false;
+        let lastCheckResults = null;
+
+        // Init
         document.addEventListener('DOMContentLoaded', function() {
             checkStatus();
             loadExtractions();
+            loadCacheStats();
         });
 
         function checkStatus() {
@@ -537,173 +348,51 @@ https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></texta
                 .then(r => r.json())
                 .then(data => {
                     const el = document.getElementById('playwright-status');
-                    if (data.ready) {
-                        el.textContent = 'Playwright: Ready ✓';
-                        el.classList.add('ready');
-                    } else {
-                        el.textContent = 'Playwright: Not Available';
-                    }
+                    el.textContent = data.ready ? 'Playwright: Ready' : 'Playwright: N/A';
+                    if (data.ready) el.classList.add('ready');
                 })
-                .catch(() => {
-                    document.getElementById('playwright-status').textContent = 'Playwright: Error';
-                });
+                .catch(() => {});
+        }
+
+        function loadCacheStats() {
+            fetch('/url-cache/stats')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('cache-status').textContent =
+                        `Cache: ${data.total_domains} domains`;
+                })
+                .catch(() => {});
         }
 
         function showTab(tabName) {
-            // Update tabs
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
-
-            // Update panels
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.getElementById('panel-' + tabName).classList.add('active');
+            if (tabName === 'history') loadHistory();
+            if (tabName === 'extractions') loadExtractions();
         }
 
-        function showLoading(elementId) {
-            document.getElementById(elementId).innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Extracting content... This may take a minute.</p>
-                </div>
-            `;
+        function toggleAutoExtract() {
+            autoExtract = !autoExtract;
+            document.getElementById('auto-extract-toggle').classList.toggle('active', autoExtract);
         }
 
-        function showError(elementId, message) {
-            document.getElementById(elementId).innerHTML = `
-                <div class="error">
-                    <strong>Error:</strong> ${message}
-                </div>
-            `;
+        function addLog(message, type = '') {
+            const log = document.getElementById('processing-log');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.innerHTML = `<span class="log-time">${time}</span>${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
         }
 
-        function showResults(elementId, data) {
-            const sections = data.data?.sections || [];
-            const summary = data.summary || {};
-            const errors = data.errors || [];
-            const extractionId = data.extraction_id || 'unknown';
-
-            // Check if this is a batch result with per-URL info
-            const resultsSummary = data.data?.results_summary || [];
-
-            let html = '';
-
-            // Show summary
-            if (summary.urls_processed) {
-                // Batch result
-                html += `
-                    <div class="success">
-                        <strong>Batch Complete!</strong><br>
-                        URLs processed: ${summary.urls_processed}<br>
-                        URLs successful: ${summary.urls_successful || 0}<br>
-                        Total sections: ${summary.total_sections || 0}<br>
-                        Total images: ${summary.total_images || 0}<br>
-                        Extraction ID: ${extractionId}
-                    </div>
-                `;
-
-                // Show per-URL results
-                if (resultsSummary.length > 0) {
-                    html += '<div style="margin-top: 20px;"><h3 style="color: #00d4ff;">Per-URL Results:</h3>';
-                    resultsSummary.forEach((r, i) => {
-                        if (r.success) {
-                            html += `<div class="section-item" style="border-left: 3px solid #69db7c; padding-left: 15px;">
-                                <strong>${r.page_title || 'Unknown Title'}</strong><br>
-                                <span style="color: #888; font-size: 0.85rem;">${r.url}</span><br>
-                                <span style="color: #69db7c;">✓ ${r.sections_count || 0} sections extracted</span>
-                            </div>`;
-                        } else {
-                            html += `<div class="section-item" style="border-left: 3px solid #ff6b6b; padding-left: 15px;">
-                                <span style="color: #888; font-size: 0.85rem;">${r.url}</span><br>
-                                <span style="color: #ff6b6b;">✗ Failed: ${r.error || 'Unknown error'}</span>
-                            </div>`;
-                        }
-                    });
-                    html += '</div>';
-                }
-            } else {
-                // Single URL result
-                html += `
-                    <div class="success">
-                        <strong>Success!</strong> Extracted ${sections.length} sections.
-                        <br>Extraction ID: ${extractionId}
-                    </div>
-                `;
-            }
-
-            // Show errors if any
-            if (errors.length > 0) {
-                html += '<div class="error" style="margin-top: 15px;"><strong>Some URLs failed:</strong><ul style="margin-top: 10px;">';
-                errors.forEach(err => {
-                    html += `<li>${err.url}: ${err.error}</li>`;
-                });
-                html += '</ul></div>';
-            }
-
-            // Show section previews
-            if (sections.length > 0) {
-                html += '<div style="margin-top: 20px;"><h3 style="color: #00d4ff;">Content Preview (first 10):</h3>';
-                sections.slice(0, 10).forEach((section, i) => {
-                    html += `
-                        <div class="section-item">
-                            <h4>${section.heading || section.term || 'Section ' + (i+1)}</h4>
-                            ${section.source_title ? `<p style="color: #888; font-size: 0.85rem;">From: ${section.source_title}</p>` : ''}
-                            <p><strong>Definition:</strong> ${section.definition || 'N/A'}</p>
-                            ${section.visual_indicators ? `<p><strong>Visual Indicators:</strong> ${section.visual_indicators}</p>` : ''}
-                            ${section.image?.local_file ? `<img src="/images/${section.image.local_file.replace('images/', '')}" alt="">` : ''}
-                        </div>
-                    `;
-                });
-                if (sections.length > 10) {
-                    html += `<p style="color: #888;">... and ${sections.length - 10} more sections. Download JSON for full data.</p>`;
-                }
-                html += '</div>';
-            }
-
-            // Download button
-            if (extractionId && extractionId !== 'unknown') {
-                html += `
-                    <div style="margin-top: 20px;">
-                        <a href="/extractions/${extractionId}/download" class="btn btn-small" download>Download JSON</a>
-                    </div>
-                `;
-            }
-
-            document.getElementById(elementId).innerHTML = html;
+        function clearLog() {
+            document.getElementById('processing-log').innerHTML = '';
         }
-
-        async function extractSingle(e) {
-            e.preventDefault();
-            const url = document.getElementById('single-url').value;
-            const includeImages = document.getElementById('single-images').checked;
-
-            showLoading('single-results');
-            document.getElementById('single-submit').disabled = true;
-
-            try {
-                const response = await fetch('/extract', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url, include_images: includeImages })
-                });
-                const data = await response.json();
-
-                if (data.error) {
-                    showError('single-results', data.error);
-                } else {
-                    showResults('single-results', data);
-                }
-            } catch (err) {
-                showError('single-results', err.message);
-            }
-
-            document.getElementById('single-submit').disabled = false;
-        }
-
-        // Store check results for later use
-        let lastCheckResults = null;
 
         function onUrlsChange() {
-            // Clear traffic results when URLs change
             document.getElementById('traffic-results').innerHTML = '';
             document.getElementById('batch-results').innerHTML = '';
             lastCheckResults = null;
@@ -714,25 +403,15 @@ https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></texta
             const urls = urlsText.split('\n').map(u => u.trim()).filter(u => u && u.startsWith('http'));
 
             if (urls.length === 0) {
-                showError('traffic-results', 'Please enter at least one valid URL');
+                addLog('No valid URLs entered', 'error');
                 return;
             }
 
-            if (urls.length > 50) {
-                showError('traffic-results', 'Maximum 50 URLs allowed');
-                return;
-            }
+            clearLog();
+            addLog(`Checking ${urls.length} URLs...`, 'processing');
 
             const btn = document.getElementById('check-urls-btn');
             btn.disabled = true;
-            btn.textContent = '🔍 Checking URLs...';
-
-            document.getElementById('traffic-results').innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Checking ${urls.length} URLs... This is quick!</p>
-                </div>
-            `;
 
             try {
                 const response = await fetch('/check-urls', {
@@ -743,225 +422,231 @@ https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></texta
                 const data = await response.json();
 
                 if (data.error) {
-                    showError('traffic-results', data.error);
+                    addLog('Error: ' + data.error, 'error');
                 } else {
                     lastCheckResults = data;
+                    addLog(`Found: ${data.summary.green} green, ${data.summary.yellow} yellow, ${data.summary.red} red`, 'success');
                     showTrafficResults(data);
+                    loadCacheStats();
+
+                    // Auto-extract if enabled
+                    if (autoExtract && data.green.length > 0) {
+                        addLog('Auto-extracting green URLs...', 'processing');
+                        extractGreenUrls();
+                    }
                 }
             } catch (err) {
-                showError('traffic-results', err.message);
+                addLog('Error: ' + err.message, 'error');
             }
 
             btn.disabled = false;
-            btn.textContent = '🚦 Check URLs First';
+        }
+
+        async function recheckUrls() {
+            const urlsText = document.getElementById('batch-urls').value;
+            const urls = urlsText.split('\n').map(u => u.trim()).filter(u => u && u.startsWith('http'));
+
+            if (urls.length === 0) return;
+
+            clearLog();
+            addLog(`Re-checking ${urls.length} URLs (ignoring cache)...`, 'processing');
+
+            try {
+                const response = await fetch('/check-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls, use_cache: false })
+                });
+                const data = await response.json();
+                if (!data.error) {
+                    lastCheckResults = data;
+                    addLog(`Found: ${data.summary.green} green, ${data.summary.yellow} yellow, ${data.summary.red} red`, 'success');
+                    showTrafficResults(data);
+                    loadCacheStats();
+                }
+            } catch (err) {
+                addLog('Error: ' + err.message, 'error');
+            }
         }
 
         function showTrafficResults(data) {
             const { summary, green, yellow, red } = data;
 
             let html = `
-                <div class="traffic-light-container">
-                    <h3 style="color: #00d4ff; margin-bottom: 15px;">URL Accessibility Check Results</h3>
-
-                    <!-- Summary -->
-                    <div class="traffic-summary">
-                        <div class="traffic-count green">
-                            <span class="traffic-dot green"></span>
-                            ${summary.green} Green - Ready to extract
-                        </div>
-                        <div class="traffic-count yellow">
-                            <span class="traffic-dot yellow"></span>
-                            ${summary.yellow} Yellow - Need Browser Mode
-                        </div>
-                        <div class="traffic-count red">
-                            <span class="traffic-dot red"></span>
-                            ${summary.red} Red - Blocked
-                        </div>
-                    </div>
+                <div class="traffic-summary">
+                    <div class="traffic-count green"><span class="traffic-dot green"></span>${summary.green} Green</div>
+                    <div class="traffic-count yellow"><span class="traffic-dot yellow"></span>${summary.yellow} Yellow</div>
+                    <div class="traffic-count red"><span class="traffic-dot red"></span>${summary.red} Red</div>
+                </div>
             `;
 
-            // Green URLs
             if (green.length > 0) {
                 html += `
                     <div class="url-group">
-                        <div class="url-group-header green">
-                            <span class="traffic-dot green"></span>
-                            GREEN LIGHT - Ready for Standard Extraction (${green.length})
-                            <span class="tooltip-icon" title="These URLs are accessible via standard HTTP requests and will be processed automatically.">?</span>
+                        <div class="url-group-header green" onclick="toggleGroup(this)">
+                            <span class="traffic-dot green"></span>GREEN - Ready (${green.length})
+                            <span class="expand-btn">expand</span>
                         </div>
-                        <div class="url-group-content">
-                            ${green.map(u => `
-                                <div class="url-item green">
-                                    <div>
-                                        <div class="url-text">${u.url}</div>
-                                        <div class="url-reason">${u.reason}</div>
-                                        <div class="url-suggestion">✓ ${u.suggestion}</div>
-                                    </div>
-                                    ${u.from_cache ? '<span class="cache-badge">cached</span>' : ''}
-                                </div>
-                            `).join('')}
-                            <div class="btn-group">
-                                <button class="btn btn-green" onclick="extractGreenUrls()">
-                                    ✓ Extract All Green URLs (${green.length})
-                                </button>
-                            </div>
+                        <div class="url-group-content collapsed">
+                            ${green.map(u => `<div class="url-item"><div class="url-text">${u.url}</div><div class="url-meta">${u.from_cache ? 'cached' : 'fresh'}</div></div>`).join('')}
                         </div>
                     </div>
+                    <button class="btn btn-green" onclick="extractGreenUrls()">Extract All Green (${green.length})</button>
                 `;
             }
 
-            // Yellow URLs
             if (yellow.length > 0) {
                 html += `
-                    <div class="url-group">
-                        <div class="url-group-header yellow">
-                            <span class="traffic-dot yellow"></span>
-                            YELLOW LIGHT - Need Browser Mode (${yellow.length})
-                            <span class="tooltip-icon" title="These URLs have bot protection (Cloudflare, etc). Use the Browser Mode tab with Playwright to extract them.">?</span>
+                    <div class="url-group" style="margin-top: 15px;">
+                        <div class="url-group-header yellow" onclick="toggleGroup(this)">
+                            <span class="traffic-dot yellow"></span>YELLOW - Need Browser Mode (${yellow.length})
+                            <span class="expand-btn">expand</span>
                         </div>
-                        <div class="url-group-content">
-                            ${yellow.map(u => `
-                                <div class="url-item yellow">
-                                    <div>
-                                        <div class="url-text">${u.url}</div>
-                                        <div class="url-reason">${u.reason}</div>
-                                        <div class="url-suggestion">⚠ ${u.suggestion}</div>
-                                    </div>
-                                    ${u.from_cache ? '<span class="cache-badge">cached</span>' : ''}
-                                </div>
-                            `).join('')}
-                            <div style="margin-top: 15px; padding: 12px; background: rgba(255, 212, 59, 0.1); border-radius: 8px;">
-                                <strong style="color: #ffd43b;">How to extract these:</strong>
-                                <ol style="margin: 10px 0 0 20px; color: #ccc; font-size: 0.9rem;">
-                                    <li>Go to the <strong>Browser Mode</strong> tab</li>
-                                    <li>Paste each URL one at a time</li>
-                                    <li>Playwright will handle the bot protection</li>
-                                </ol>
-                            </div>
+                        <div class="url-group-content collapsed">
+                            ${yellow.map(u => `<div class="url-item"><div class="url-text">${u.url}</div><div class="url-meta">${u.reason}</div></div>`).join('')}
+                            <p style="color: #ffd43b; font-size: 0.8rem; margin-top: 10px;">Use Browser Mode tab for these URLs</p>
                         </div>
                     </div>
                 `;
             }
 
-            // Red URLs
             if (red.length > 0) {
                 html += `
-                    <div class="url-group">
-                        <div class="url-group-header red">
-                            <span class="traffic-dot red"></span>
-                            RED LIGHT - Cannot Extract Automatically (${red.length})
-                            <span class="tooltip-icon" title="These URLs cannot be accessed by our tools. You'll need to manually save the page and use HTML Upload.">?</span>
+                    <div class="url-group" style="margin-top: 15px;">
+                        <div class="url-group-header red" onclick="toggleGroup(this)">
+                            <span class="traffic-dot red"></span>RED - Blocked (${red.length})
+                            <span class="expand-btn">expand</span>
                         </div>
-                        <div class="url-group-content">
-                            ${red.map(u => `
-                                <div class="url-item red">
-                                    <div>
-                                        <div class="url-text">${u.url}</div>
-                                        <div class="url-reason">${u.reason}</div>
-                                        <div class="url-suggestion">✗ ${u.suggestion}</div>
-                                    </div>
-                                    ${u.from_cache ? '<span class="cache-badge">cached</span>' : ''}
-                                </div>
-                            `).join('')}
-                            <div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">
-                                <strong style="color: #ff6b6b;">Manual extraction required:</strong>
-                                <ol style="margin: 10px 0 0 20px; color: #ccc; font-size: 0.9rem;">
-                                    <li>Open the URL in your browser manually</li>
-                                    <li>Right-click → "Save As" → "Webpage, Complete"</li>
-                                    <li>Go to the <strong>HTML Upload</strong> tab</li>
-                                    <li>Paste the saved HTML content</li>
-                                </ol>
-                            </div>
+                        <div class="url-group-content collapsed">
+                            ${red.map(u => `<div class="url-item"><div class="url-text">${u.url}</div><div class="url-meta">${u.reason}</div></div>`).join('')}
+                            <p style="color: #ff6b6b; font-size: 0.8rem; margin-top: 10px;">Use HTML Upload tab - save page manually</p>
                         </div>
                     </div>
                 `;
             }
 
-            html += '</div>';
             document.getElementById('traffic-results').innerHTML = html;
+        }
+
+        function toggleGroup(header) {
+            const content = header.nextElementSibling;
+            const btn = header.querySelector('.expand-btn');
+            content.classList.toggle('collapsed');
+            btn.textContent = content.classList.contains('collapsed') ? 'expand' : 'collapse';
         }
 
         async function extractGreenUrls() {
             if (!lastCheckResults || lastCheckResults.green.length === 0) {
-                showError('batch-results', 'No green URLs to extract');
+                addLog('No green URLs to extract', 'error');
                 return;
             }
 
             const urls = lastCheckResults.green.map(u => u.url);
             const includeImages = document.getElementById('batch-images').checked;
 
-            // Show processing status
-            document.getElementById('batch-results').innerHTML = `
-                <div class="processing-status">
-                    <h4>🔄 Processing ${urls.length} Green URLs</h4>
-                    <p>Extracting content... This may take a few minutes for large batches.</p>
+            addLog(`Starting extraction of ${urls.length} URLs...`, 'processing');
+
+            // Use streaming endpoint
+            try {
+                const response = await fetch('/extract-batch-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls, include_images: includeImages })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let extractionId = null;
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const text = decoder.decode(value);
+                    const lines = text.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+
+                                if (data.type === 'start') {
+                                    extractionId = data.extraction_id;
+                                    addLog(`Extraction ID: ${extractionId}`, 'processing');
+                                } else if (data.type === 'progress') {
+                                    if (data.status === 'processing') {
+                                        addLog(`[${data.current}/${data.total}] Processing: ${data.url.substring(0, 50)}...`, 'processing');
+                                    } else if (data.status === 'success') {
+                                        addLog(`[${data.current}/${data.total}] ${data.sections} sections from: ${data.title || 'Unknown'}`, 'success');
+                                    } else if (data.status === 'error') {
+                                        addLog(`[${data.current}/${data.total}] FAILED: ${data.error}`, 'error');
+                                    }
+                                } else if (data.type === 'complete') {
+                                    addLog(`Complete! ${data.urls_successful}/${data.urls_processed} URLs, ${data.total_sections} sections`, 'success');
+                                    showBatchComplete(data);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+            } catch (err) {
+                addLog('Extraction error: ' + err.message, 'error');
+            }
+        }
+
+        function showBatchComplete(data) {
+            let html = `
+                <div class="success-box">
+                    <strong>Extraction Complete!</strong><br>
+                    URLs: ${data.urls_successful}/${data.urls_processed} successful<br>
+                    Sections: ${data.total_sections}<br>
+                    Images: ${data.total_images}<br>
+                    ID: ${data.extraction_id}
                 </div>
             `;
 
-            try {
-                const response = await fetch('/extract-batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ urls, include_images: includeImages, combine_results: true })
-                });
-                const data = await response.json();
-
-                if (data.error) {
-                    showError('batch-results', data.error);
-                } else {
-                    showResults('batch-results', data);
-                }
-            } catch (err) {
-                showError('batch-results', err.message);
+            if (data.errors && data.errors.length > 0) {
+                html += `<div class="error-box" style="margin-top: 10px;"><strong>Errors:</strong><br>${data.errors.map(e => e.url + ': ' + e.error).join('<br>')}</div>`;
             }
+
+            html += `<a href="/extractions/${data.extraction_id}/download" class="btn btn-small" style="margin-top: 10px;" download>Download JSON</a>`;
+
+            document.getElementById('batch-results').innerHTML = html;
         }
 
-        async function extractBatchDirect() {
-            const urlsText = document.getElementById('batch-urls').value;
-            const urls = urlsText.split('\n').map(u => u.trim()).filter(u => u && u.startsWith('http'));
-            const includeImages = document.getElementById('batch-images').checked;
-
-            if (urls.length === 0) {
-                showError('batch-results', 'Please enter at least one valid URL');
-                return;
-            }
-
-            showLoading('batch-results');
-            document.getElementById('batch-submit').disabled = true;
-
-            try {
-                const response = await fetch('/extract-batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ urls, include_images: includeImages, combine_results: true })
-                });
-                const data = await response.json();
-
-                if (data.error) {
-                    showError('batch-results', data.error);
-                } else {
-                    showResults('batch-results', data);
-                }
-            } catch (err) {
-                showError('batch-results', err.message);
-            }
-
-            document.getElementById('batch-submit').disabled = false;
-        }
-
-        // Legacy function for form submit (not used anymore but kept for compatibility)
-        async function extractBatch(e) {
+        // Single URL extraction
+        async function extractSingle(e) {
             e.preventDefault();
-            extractBatchDirect();
+            const url = document.getElementById('single-url').value;
+            const includeImages = document.getElementById('single-images').checked;
+
+            document.getElementById('single-results').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const response = await fetch('/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, include_images: includeImages })
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('single-results').innerHTML = `<div class="error-box">${data.error}</div>`;
+                } else {
+                    showResults('single-results', data);
+                }
+            } catch (err) {
+                document.getElementById('single-results').innerHTML = `<div class="error-box">${err.message}</div>`;
+            }
         }
 
+        // Browser extraction
         async function extractBrowser(e) {
             e.preventDefault();
             const url = document.getElementById('browser-url').value;
             const includeImages = document.getElementById('browser-images').checked;
 
-            showLoading('browser-results');
-            document.getElementById('browser-submit').disabled = true;
+            document.getElementById('browser-results').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
             try {
                 const response = await fetch('/extract-browser', {
@@ -972,46 +657,110 @@ https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></texta
                 const data = await response.json();
 
                 if (data.error) {
-                    showError('browser-results', data.error);
+                    document.getElementById('browser-results').innerHTML = `<div class="error-box">${data.error}</div>`;
                 } else {
                     showResults('browser-results', data);
                 }
             } catch (err) {
-                showError('browser-results', err.message);
+                document.getElementById('browser-results').innerHTML = `<div class="error-box">${err.message}</div>`;
             }
-
-            document.getElementById('browser-submit').disabled = false;
         }
 
+        // HTML extraction
         async function extractHTML(e) {
             e.preventDefault();
             const html = document.getElementById('html-content').value;
             const baseUrl = document.getElementById('html-baseurl').value;
-            const sourceName = document.getElementById('html-name').value || 'uploaded_html';
 
-            showLoading('html-results');
-            document.getElementById('html-submit').disabled = true;
+            document.getElementById('html-results').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
             try {
                 const response = await fetch('/extract-html', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ html, base_url: baseUrl, source_name: sourceName })
+                    body: JSON.stringify({ html, base_url: baseUrl })
                 });
                 const data = await response.json();
 
                 if (data.error) {
-                    showError('html-results', data.error);
+                    document.getElementById('html-results').innerHTML = `<div class="error-box">${data.error}</div>`;
                 } else {
                     showResults('html-results', data);
                 }
             } catch (err) {
-                showError('html-results', err.message);
+                document.getElementById('html-results').innerHTML = `<div class="error-box">${err.message}</div>`;
             }
-
-            document.getElementById('html-submit').disabled = false;
         }
 
+        function showResults(elementId, data) {
+            const sections = data.data?.sections || [];
+            let html = `
+                <div class="success-box">
+                    Extracted ${sections.length} sections. ID: ${data.extraction_id || 'N/A'}
+                </div>
+            `;
+
+            if (sections.length > 0) {
+                html += '<div style="margin-top: 15px;">';
+                sections.slice(0, 5).forEach((s, i) => {
+                    html += `<div class="section-item">
+                        <h4>${s.heading || s.term || 'Section ' + (i+1)}</h4>
+                        <p>${s.definition || s.surrounding_text?.substring(0, 200) || 'N/A'}...</p>
+                    </div>`;
+                });
+                if (sections.length > 5) html += `<p style="color: #888;">${sections.length - 5} more sections...</p>`;
+                html += '</div>';
+            }
+
+            if (data.extraction_id) {
+                html += `<a href="/extractions/${data.extraction_id}/download" class="btn btn-small" style="margin-top: 10px;" download>Download JSON</a>`;
+            }
+
+            document.getElementById(elementId).innerHTML = html;
+        }
+
+        // History
+        async function loadHistory() {
+            const search = document.getElementById('history-search').value;
+            const status = document.getElementById('history-filter').value;
+
+            try {
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (status) params.append('status', status);
+
+                const response = await fetch('/url-history?' + params.toString());
+                const data = await response.json();
+
+                document.getElementById('history-stats').innerHTML = `
+                    <div class="traffic-summary">
+                        <div class="traffic-count green"><span class="traffic-dot green"></span>${data.stats.green} Green</div>
+                        <div class="traffic-count yellow"><span class="traffic-dot yellow"></span>${data.stats.yellow} Yellow</div>
+                        <div class="traffic-count red"><span class="traffic-dot red"></span>${data.stats.red} Red</div>
+                    </div>
+                `;
+
+                if (data.history.length === 0) {
+                    document.getElementById('history-list').innerHTML = '<p style="color: #888;">No history yet</p>';
+                    return;
+                }
+
+                document.getElementById('history-list').innerHTML = data.history.map(h => `
+                    <div class="history-item">
+                        <div>
+                            <span class="traffic-dot ${h.status}"></span>
+                            <span class="domain">${h.domain}</span>
+                            <div class="date">${h.checked_date ? new Date(h.checked_date).toLocaleDateString() : 'Unknown'}</div>
+                        </div>
+                        <span style="color: #888; font-size: 0.8rem;">${h.reason}</span>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('history-list').innerHTML = `<div class="error-box">${err.message}</div>`;
+            }
+        }
+
+        // Extractions
         async function loadExtractions() {
             const list = document.getElementById('extractions-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -1021,24 +770,24 @@ https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></texta
                 const data = await response.json();
 
                 if (data.extractions.length === 0) {
-                    list.innerHTML = '<p style="color: #888;">No extractions yet. Extract some content first!</p>';
+                    list.innerHTML = '<p style="color: #888;">No extractions yet</p>';
                     return;
                 }
 
                 list.innerHTML = data.extractions.map(ext => `
-                    <div class="extraction-item">
-                        <div class="info">
-                            <h4>${ext.id}</h4>
-                            <p>${ext.source_url} · ${ext.sections_count} sections</p>
+                    <div class="history-item">
+                        <div>
+                            <strong>${ext.id}</strong>
+                            <div class="date">${ext.sections_count} sections</div>
                         </div>
-                        <div class="actions">
-                            <a href="/extractions/${ext.id}" target="_blank" class="btn btn-small">View JSON</a>
+                        <div class="btn-group">
+                            <a href="/extractions/${ext.id}" target="_blank" class="btn btn-small btn-secondary">View</a>
                             <a href="/extractions/${ext.id}/download" class="btn btn-small" download>Download</a>
                         </div>
                     </div>
                 `).join('');
             } catch (err) {
-                list.innerHTML = `<div class="error">Failed to load extractions: ${err.message}</div>`;
+                list.innerHTML = `<div class="error-box">${err.message}</div>`;
             }
         }
     </script>
