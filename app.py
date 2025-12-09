@@ -8,7 +8,7 @@ import os
 import json
 import hashlib
 from datetime import datetime
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template
 from extractor import KnowledgeExtractor
 from crawler import SmartCrawler
 
@@ -26,8 +26,12 @@ os.makedirs(os.path.join(OUTPUT_DIR, "extractions"), exist_ok=True)
 
 @app.route("/", methods=["GET"])
 def home():
-    """Health check and API info."""
-    # Check if Playwright is available
+    """Dashboard or API info based on request type."""
+    # Check if request wants HTML (browser) or JSON (API)
+    if request.accept_mimetypes.best == 'text/html':
+        return render_template('index.html')
+
+    # Return JSON for API requests
     try:
         from browser import check_playwright_installed
         playwright_status = check_playwright_installed()
@@ -48,7 +52,8 @@ def home():
             "GET /extractions/<id>": "Get specific extraction",
             "GET /extractions/<id>/download": "Download extraction as JSON",
             "GET /images/<filename>": "Get downloaded image",
-            "GET /status/playwright": "Check if browser automation is available"
+            "GET /status/playwright": "Check if browser automation is available",
+            "GET /api": "Get this JSON API info"
         },
         "extraction_methods": {
             "http": "Standard HTTP requests (fast, works for most sites)",
@@ -56,6 +61,23 @@ def home():
             "html": "Direct HTML input (for manually saved pages)",
             "batch": "Process multiple URLs in one request"
         },
+        "playwright_ready": playwright_status.get("ready", False),
+        "status": "running"
+    })
+
+
+@app.route("/api", methods=["GET"])
+def api_info():
+    """API info endpoint (always returns JSON)."""
+    try:
+        from browser import check_playwright_installed
+        playwright_status = check_playwright_installed()
+    except Exception:
+        playwright_status = {"ready": False, "error": "Module not loaded"}
+
+    return jsonify({
+        "name": "Knowledge Extractor API",
+        "version": "2.0.0",
         "playwright_ready": playwright_status.get("ready", False),
         "status": "running"
     })
