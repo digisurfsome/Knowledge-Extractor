@@ -11,6 +11,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template
 from extractor import KnowledgeExtractor
 from crawler import SmartCrawler
+from url_checker import URLChecker
 
 app = Flask(__name__)
 
@@ -45,6 +46,100 @@ def api_info():
         "playwright_ready": playwright_status.get("ready", False),
         "status": "running"
     })
+
+
+@app.route("/check-urls", methods=["POST"])
+def check_urls():
+    """
+    Pre-flight check for URLs - determines accessibility before extraction.
+    Returns traffic light status: green (HTTP OK), yellow (needs browser), red (blocked).
+
+    Request body:
+    {
+        "urls": ["https://example.com/page1", "https://example.com/page2"],
+        "use_cache": true  // optional, default true - use cached results
+    }
+    """
+    data = request.get_json()
+
+    if not data or "urls" not in data:
+        return jsonify({"error": "Missing 'urls' in request body"}), 400
+
+    urls = data["urls"]
+    if not isinstance(urls, list) or len(urls) == 0:
+        return jsonify({"error": "'urls' must be a non-empty list"}), 400
+
+    use_cache = data.get("use_cache", True)
+
+    try:
+        checker = URLChecker(OUTPUT_DIR)
+        results = checker.check_urls(urls, use_cache=use_cache)
+
+        return jsonify({
+            "success": True,
+            "summary": {
+                "total": len(urls),
+                "green": len(results["green"]),
+                "yellow": len(results["yellow"]),
+                "red": len(results["red"])
+            },
+            "green": results["green"],
+            "yellow": results["yellow"],
+            "red": results["red"],
+            "all_results": results["all_results"]
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/check-url", methods=["POST"])
+def check_single_url():
+    """
+    Check a single URL's accessibility.
+
+    Request body:
+    {
+        "url": "https://example.com/page",
+        "use_cache": true  // optional
+    }
+    """
+    data = request.get_json()
+
+    if not data or "url" not in data:
+        return jsonify({"error": "Missing 'url' in request body"}), 400
+
+    url = data["url"]
+    use_cache = data.get("use_cache", True)
+
+    try:
+        checker = URLChecker(OUTPUT_DIR)
+        result = checker.check_url(url, use_cache=use_cache)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/url-cache/stats", methods=["GET"])
+def url_cache_stats():
+    """Get statistics about the URL status cache."""
+    try:
+        checker = URLChecker(OUTPUT_DIR)
+        stats = checker.get_cache_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/url-cache/clear", methods=["POST"])
+def clear_url_cache():
+    """Clear the URL status cache."""
+    try:
+        checker = URLChecker(OUTPUT_DIR)
+        checker.clear_cache()
+        return jsonify({"success": True, "message": "URL cache cleared"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/extract", methods=["POST"])

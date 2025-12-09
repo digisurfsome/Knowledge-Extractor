@@ -245,6 +245,154 @@
             font-size: 0.85rem;
             margin-top: 5px;
         }
+        /* Traffic Light Styles */
+        .traffic-light-container {
+            margin: 20px 0;
+        }
+        .traffic-summary {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .traffic-count {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .traffic-count.green {
+            background: rgba(105, 219, 124, 0.2);
+            color: #69db7c;
+            border: 1px solid rgba(105, 219, 124, 0.4);
+        }
+        .traffic-count.yellow {
+            background: rgba(255, 212, 59, 0.2);
+            color: #ffd43b;
+            border: 1px solid rgba(255, 212, 59, 0.4);
+        }
+        .traffic-count.red {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.4);
+        }
+        .traffic-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .traffic-dot.green { background: #69db7c; }
+        .traffic-dot.yellow { background: #ffd43b; }
+        .traffic-dot.red { background: #ff6b6b; }
+        .url-group {
+            margin-bottom: 25px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .url-group-header {
+            padding: 12px 15px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .url-group-header.green {
+            background: rgba(105, 219, 124, 0.15);
+            color: #69db7c;
+        }
+        .url-group-header.yellow {
+            background: rgba(255, 212, 59, 0.15);
+            color: #ffd43b;
+        }
+        .url-group-header.red {
+            background: rgba(255, 107, 107, 0.15);
+            color: #ff6b6b;
+        }
+        .url-group-content {
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+        }
+        .url-item {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .url-item:last-child {
+            margin-bottom: 0;
+        }
+        .url-item .url-text {
+            font-family: monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            flex: 1;
+        }
+        .url-item .url-reason {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        .url-item .url-suggestion {
+            font-size: 0.8rem;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .url-item.green .url-suggestion { color: #69db7c; }
+        .url-item.yellow .url-suggestion { color: #ffd43b; }
+        .url-item.red .url-suggestion { color: #ff6b6b; }
+        .cache-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: #888;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .btn-green {
+            background: linear-gradient(90deg, #37b24d, #69db7c);
+        }
+        .tooltip-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            text-align: center;
+            line-height: 18px;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 5px;
+        }
+        .processing-status {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .processing-status h4 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -290,23 +438,35 @@
         <!-- Batch URLs Panel -->
         <div class="panel" id="panel-batch">
             <h2>Batch Extract Multiple URLs</h2>
-            <p style="color: #888; margin-bottom: 20px;">Extract from multiple URLs at once. Enter one URL per line.</p>
+            <p style="color: #888; margin-bottom: 20px;">Enter URLs to check accessibility first, then extract the green-lit ones.</p>
 
-            <form onsubmit="extractBatch(event)">
-                <div class="form-group">
-                    <label for="batch-urls">URLs (one per line)</label>
-                    <textarea id="batch-urls" placeholder="https://nofilmschool.com/camera-angles
+            <div class="form-group">
+                <label for="batch-urls">URLs (one per line)</label>
+                <textarea id="batch-urls" placeholder="https://nofilmschool.com/camera-angles
 https://nofilmschool.com/3-point-lighting
-https://nofilmschool.com/establishing-shot" required></textarea>
-                    <p class="help-text">Maximum 50 URLs per batch. Large batches may take several minutes.</p>
-                </div>
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="batch-images" checked>
-                    <label for="batch-images" style="margin: 0;">Download images</label>
-                </div>
-                <button type="submit" id="batch-submit">Extract All URLs</button>
-            </form>
+https://www.studiobinder.com/blog/camera-shots/
+https://photopills.com/articles/exposure-guide" oninput="onUrlsChange()"></textarea>
+                <p class="help-text">Maximum 50 URLs. Paste your URLs and click "Check URLs First" to see which ones are accessible.</p>
+            </div>
 
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="batch-images" checked>
+                <label for="batch-images" style="margin: 0;">Download images</label>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" class="btn" id="check-urls-btn" onclick="checkUrlsFirst()">
+                    🚦 Check URLs First
+                </button>
+                <button type="button" class="btn btn-secondary" id="batch-submit" onclick="extractBatchDirect()" style="display: none;">
+                    Skip Check & Extract All
+                </button>
+            </div>
+
+            <!-- Traffic Light Results -->
+            <div id="traffic-results" style="margin-top: 25px;"></div>
+
+            <!-- Extraction Results -->
             <div class="results" id="batch-results"></div>
         </div>
 
@@ -539,11 +699,232 @@ https://nofilmschool.com/establishing-shot" required></textarea>
             document.getElementById('single-submit').disabled = false;
         }
 
-        async function extractBatch(e) {
-            e.preventDefault();
+        // Store check results for later use
+        let lastCheckResults = null;
+
+        function onUrlsChange() {
+            // Clear traffic results when URLs change
+            document.getElementById('traffic-results').innerHTML = '';
+            document.getElementById('batch-results').innerHTML = '';
+            lastCheckResults = null;
+        }
+
+        async function checkUrlsFirst() {
             const urlsText = document.getElementById('batch-urls').value;
-            const urls = urlsText.split('\n').map(u => u.trim()).filter(u => u);
+            const urls = urlsText.split('\n').map(u => u.trim()).filter(u => u && u.startsWith('http'));
+
+            if (urls.length === 0) {
+                showError('traffic-results', 'Please enter at least one valid URL');
+                return;
+            }
+
+            if (urls.length > 50) {
+                showError('traffic-results', 'Maximum 50 URLs allowed');
+                return;
+            }
+
+            const btn = document.getElementById('check-urls-btn');
+            btn.disabled = true;
+            btn.textContent = '🔍 Checking URLs...';
+
+            document.getElementById('traffic-results').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Checking ${urls.length} URLs... This is quick!</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/check-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls, use_cache: true })
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('traffic-results', data.error);
+                } else {
+                    lastCheckResults = data;
+                    showTrafficResults(data);
+                }
+            } catch (err) {
+                showError('traffic-results', err.message);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🚦 Check URLs First';
+        }
+
+        function showTrafficResults(data) {
+            const { summary, green, yellow, red } = data;
+
+            let html = `
+                <div class="traffic-light-container">
+                    <h3 style="color: #00d4ff; margin-bottom: 15px;">URL Accessibility Check Results</h3>
+
+                    <!-- Summary -->
+                    <div class="traffic-summary">
+                        <div class="traffic-count green">
+                            <span class="traffic-dot green"></span>
+                            ${summary.green} Green - Ready to extract
+                        </div>
+                        <div class="traffic-count yellow">
+                            <span class="traffic-dot yellow"></span>
+                            ${summary.yellow} Yellow - Need Browser Mode
+                        </div>
+                        <div class="traffic-count red">
+                            <span class="traffic-dot red"></span>
+                            ${summary.red} Red - Blocked
+                        </div>
+                    </div>
+            `;
+
+            // Green URLs
+            if (green.length > 0) {
+                html += `
+                    <div class="url-group">
+                        <div class="url-group-header green">
+                            <span class="traffic-dot green"></span>
+                            GREEN LIGHT - Ready for Standard Extraction (${green.length})
+                            <span class="tooltip-icon" title="These URLs are accessible via standard HTTP requests and will be processed automatically.">?</span>
+                        </div>
+                        <div class="url-group-content">
+                            ${green.map(u => `
+                                <div class="url-item green">
+                                    <div>
+                                        <div class="url-text">${u.url}</div>
+                                        <div class="url-reason">${u.reason}</div>
+                                        <div class="url-suggestion">✓ ${u.suggestion}</div>
+                                    </div>
+                                    ${u.from_cache ? '<span class="cache-badge">cached</span>' : ''}
+                                </div>
+                            `).join('')}
+                            <div class="btn-group">
+                                <button class="btn btn-green" onclick="extractGreenUrls()">
+                                    ✓ Extract All Green URLs (${green.length})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Yellow URLs
+            if (yellow.length > 0) {
+                html += `
+                    <div class="url-group">
+                        <div class="url-group-header yellow">
+                            <span class="traffic-dot yellow"></span>
+                            YELLOW LIGHT - Need Browser Mode (${yellow.length})
+                            <span class="tooltip-icon" title="These URLs have bot protection (Cloudflare, etc). Use the Browser Mode tab with Playwright to extract them.">?</span>
+                        </div>
+                        <div class="url-group-content">
+                            ${yellow.map(u => `
+                                <div class="url-item yellow">
+                                    <div>
+                                        <div class="url-text">${u.url}</div>
+                                        <div class="url-reason">${u.reason}</div>
+                                        <div class="url-suggestion">⚠ ${u.suggestion}</div>
+                                    </div>
+                                    ${u.from_cache ? '<span class="cache-badge">cached</span>' : ''}
+                                </div>
+                            `).join('')}
+                            <div style="margin-top: 15px; padding: 12px; background: rgba(255, 212, 59, 0.1); border-radius: 8px;">
+                                <strong style="color: #ffd43b;">How to extract these:</strong>
+                                <ol style="margin: 10px 0 0 20px; color: #ccc; font-size: 0.9rem;">
+                                    <li>Go to the <strong>Browser Mode</strong> tab</li>
+                                    <li>Paste each URL one at a time</li>
+                                    <li>Playwright will handle the bot protection</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Red URLs
+            if (red.length > 0) {
+                html += `
+                    <div class="url-group">
+                        <div class="url-group-header red">
+                            <span class="traffic-dot red"></span>
+                            RED LIGHT - Cannot Extract Automatically (${red.length})
+                            <span class="tooltip-icon" title="These URLs cannot be accessed by our tools. You'll need to manually save the page and use HTML Upload.">?</span>
+                        </div>
+                        <div class="url-group-content">
+                            ${red.map(u => `
+                                <div class="url-item red">
+                                    <div>
+                                        <div class="url-text">${u.url}</div>
+                                        <div class="url-reason">${u.reason}</div>
+                                        <div class="url-suggestion">✗ ${u.suggestion}</div>
+                                    </div>
+                                    ${u.from_cache ? '<span class="cache-badge">cached</span>' : ''}
+                                </div>
+                            `).join('')}
+                            <div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">
+                                <strong style="color: #ff6b6b;">Manual extraction required:</strong>
+                                <ol style="margin: 10px 0 0 20px; color: #ccc; font-size: 0.9rem;">
+                                    <li>Open the URL in your browser manually</li>
+                                    <li>Right-click → "Save As" → "Webpage, Complete"</li>
+                                    <li>Go to the <strong>HTML Upload</strong> tab</li>
+                                    <li>Paste the saved HTML content</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            document.getElementById('traffic-results').innerHTML = html;
+        }
+
+        async function extractGreenUrls() {
+            if (!lastCheckResults || lastCheckResults.green.length === 0) {
+                showError('batch-results', 'No green URLs to extract');
+                return;
+            }
+
+            const urls = lastCheckResults.green.map(u => u.url);
             const includeImages = document.getElementById('batch-images').checked;
+
+            // Show processing status
+            document.getElementById('batch-results').innerHTML = `
+                <div class="processing-status">
+                    <h4>🔄 Processing ${urls.length} Green URLs</h4>
+                    <p>Extracting content... This may take a few minutes for large batches.</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/extract-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls, include_images: includeImages, combine_results: true })
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('batch-results', data.error);
+                } else {
+                    showResults('batch-results', data);
+                }
+            } catch (err) {
+                showError('batch-results', err.message);
+            }
+        }
+
+        async function extractBatchDirect() {
+            const urlsText = document.getElementById('batch-urls').value;
+            const urls = urlsText.split('\n').map(u => u.trim()).filter(u => u && u.startsWith('http'));
+            const includeImages = document.getElementById('batch-images').checked;
+
+            if (urls.length === 0) {
+                showError('batch-results', 'Please enter at least one valid URL');
+                return;
+            }
 
             showLoading('batch-results');
             document.getElementById('batch-submit').disabled = true;
@@ -566,6 +947,12 @@ https://nofilmschool.com/establishing-shot" required></textarea>
             }
 
             document.getElementById('batch-submit').disabled = false;
+        }
+
+        // Legacy function for form submit (not used anymore but kept for compatibility)
+        async function extractBatch(e) {
+            e.preventDefault();
+            extractBatchDirect();
         }
 
         async function extractBrowser(e) {
