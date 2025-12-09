@@ -204,8 +204,29 @@ def extract_batch_stream():
         all_sections = []
         all_results = []
         errors = []
+        output_path = os.path.join(OUTPUT_DIR, "extractions", f"{extraction_id}.json")
 
         yield f"data: {json.dumps({'type': 'start', 'total': len(urls), 'extraction_id': extraction_id})}\n\n"
+
+        def save_progress():
+            """Save current progress to file (for recovery if connection drops)."""
+            combined = {
+                "extraction_type": "batch",
+                "extraction_id": extraction_id,
+                "extracted_date": datetime.now().isoformat(),
+                "status": "in_progress",
+                "urls_total": len(urls),
+                "urls_processed": len(all_results),
+                "urls_successful": len([r for r in all_results if r.get("success")]),
+                "total_sections": len(all_sections),
+                "results_summary": all_results,
+                "sections": all_sections
+            }
+            try:
+                with open(output_path, "w", encoding="utf-8") as f:
+                    json.dump(combined, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
 
         for i, url in enumerate(urls):
             # Send progress update
@@ -241,11 +262,15 @@ def extract_batch_stream():
 
                 yield f"data: {json.dumps({'type': 'progress', 'current': i+1, 'total': len(urls), 'url': url, 'status': 'error', 'error': error_msg})}\n\n"
 
+            # Save progress after each URL (for recovery)
+            save_progress()
+
         # Build and save final result
         combined = {
             "extraction_type": "batch",
             "extraction_id": extraction_id,
             "extracted_date": datetime.now().isoformat(),
+            "status": "complete",
             "urls_processed": len(urls),
             "urls_successful": len([r for r in all_results if r.get("success")]),
             "total_sections": len(all_sections),
@@ -253,7 +278,6 @@ def extract_batch_stream():
             "sections": all_sections
         }
 
-        output_path = os.path.join(OUTPUT_DIR, "extractions", f"{extraction_id}.json")
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(combined, f, indent=2, ensure_ascii=False)
 

@@ -491,7 +491,7 @@ https://example.com/page2" oninput="onUrlsChange()"></textarea>
                             ${green.map(u => `<div class="url-item"><div class="url-text">${u.url}</div><div class="url-meta">${u.from_cache ? 'cached' : 'fresh'}</div></div>`).join('')}
                         </div>
                     </div>
-                    <button class="btn btn-green" onclick="extractGreenUrls()">Extract All Green (${green.length})</button>
+                    ${!autoExtract ? `<button class="btn btn-green" onclick="extractGreenUrls()">Extract All Green (${green.length})</button>` : '<p style="color: #69db7c; font-size: 0.85rem; margin-top: 10px;">Auto-extracting... check Processing Log →</p>'}
                 `;
             }
 
@@ -535,6 +535,11 @@ https://example.com/page2" oninput="onUrlsChange()"></textarea>
             btn.textContent = content.classList.contains('collapsed') ? 'expand' : 'collapse';
         }
 
+        // Track current extraction for recovery
+        let currentExtractionId = null;
+        let processedCount = 0;
+        let totalCount = 0;
+
         async function extractGreenUrls() {
             if (!lastCheckResults || lastCheckResults.green.length === 0) {
                 addLog('No green URLs to extract', 'error');
@@ -543,8 +548,19 @@ https://example.com/page2" oninput="onUrlsChange()"></textarea>
 
             const urls = lastCheckResults.green.map(u => u.url);
             const includeImages = document.getElementById('batch-images').checked;
+            totalCount = urls.length;
+            processedCount = 0;
 
             addLog(`Starting extraction of ${urls.length} URLs...`, 'processing');
+
+            // Show in-progress indicator
+            document.getElementById('batch-results').innerHTML = `
+                <div class="success-box" style="background: rgba(0, 212, 255, 0.1); border-color: rgba(0, 212, 255, 0.3); color: #00d4ff;">
+                    <strong>Extraction In Progress...</strong><br>
+                    <span id="progress-text">Starting...</span><br>
+                    <span id="extraction-id-display"></span>
+                </div>
+            `;
 
             // Use streaming endpoint
             try {
@@ -554,9 +570,12 @@ https://example.com/page2" oninput="onUrlsChange()"></textarea>
                     body: JSON.stringify({ urls, include_images: includeImages })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let extractionId = null;
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -571,9 +590,15 @@ https://example.com/page2" oninput="onUrlsChange()"></textarea>
                                 const data = JSON.parse(line.slice(6));
 
                                 if (data.type === 'start') {
-                                    extractionId = data.extraction_id;
-                                    addLog(`Extraction ID: ${extractionId}`, 'processing');
+                                    currentExtractionId = data.extraction_id;
+                                    addLog(`Extraction ID: ${currentExtractionId}`, 'processing');
+                                    document.getElementById('extraction-id-display').innerHTML =
+                                        `ID: ${currentExtractionId} <a href="/extractions/${currentExtractionId}" target="_blank" style="color: #00d4ff;">(view)</a>`;
                                 } else if (data.type === 'progress') {
+                                    processedCount = data.current;
+                                    document.getElementById('progress-text').textContent =
+                                        `Processing ${data.current}/${data.total} URLs...`;
+
                                     if (data.status === 'processing') {
                                         addLog(`[${data.current}/${data.total}] Processing: ${data.url.substring(0, 50)}...`, 'processing');
                                     } else if (data.status === 'success') {
@@ -590,7 +615,25 @@ https://example.com/page2" oninput="onUrlsChange()"></textarea>
                     }
                 }
             } catch (err) {
-                addLog('Extraction error: ' + err.message, 'error');
+                addLog('Connection lost: ' + err.message, 'error');
+                addLog(`Processed ${processedCount}/${totalCount} URLs before disconnect`, 'error');
+
+                // Show partial results link if we have an extraction ID
+                if (currentExtractionId) {
+                    addLog(`Partial results may be available at ID: ${currentExtractionId}`, 'processing');
+                    document.getElementById('batch-results').innerHTML = `
+                        <div class="error-box">
+                            <strong>Extraction Interrupted</strong><br>
+                            Processed ${processedCount}/${totalCount} URLs before connection lost.<br>
+                            ${err.message}
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <a href="/extractions/${currentExtractionId}" target="_blank" class="btn btn-small btn-secondary">View Partial Results</a>
+                            <a href="/extractions/${currentExtractionId}/download" class="btn btn-small" download>Download Partial JSON</a>
+                        </div>
+                        <p style="color: #888; font-size: 0.8rem; margin-top: 10px;">Tip: For large batches, try processing 5-10 URLs at a time to avoid timeouts.</p>
+                    `;
+                }
             }
         }
 
