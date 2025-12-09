@@ -8,7 +8,6 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PORT=8080
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -22,11 +21,14 @@ RUN pip install playwright==1.40.0
 # Copy application code
 COPY . .
 
+# Make start script executable
+RUN chmod +x start.sh
+
 # Create output directory
 RUN mkdir -p /app/output/images /app/output/extractions
 
-# Expose port
+# Expose port (Railway will set PORT env var)
 EXPOSE 8080
 
-# Use shell form so $PORT gets expanded
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+# Use the start script
+ENTRYPOINT ["./start.sh"]
